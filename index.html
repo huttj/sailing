@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sailing — A Sea of Ideas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="sidebar" class="sidebar-hidden">
+    <div id="sidebar-resize-handle"></div>
+    <div id="sidebar-header">
+      <button id="sidebar-close">&times;</button>
+      <span id="sidebar-title"></span>
+    </div>
+    <div id="sidebar-idea-nav"></div>
+    <div id="sidebar-body"></div>
+  </div>
+
+  <div id="minimap">
+    <canvas id="minimap-canvas" width="200" height="200"></canvas>
+  </div>
+
+  <div id="settings-panel">
+    <button id="settings-toggle">Settings &#9660;</button>
+    <div id="settings-content"></div>
+  </div>
+
+  <div id="hud">
+    <span class="hud-hint">Arrow keys to sail &middot; Space to dive</span>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
