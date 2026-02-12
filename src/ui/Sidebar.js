@@ -1,8 +1,26 @@
 /**
- * Sidebar — hidden by default, slides in on dive to show full article
- * with highlighted quote. Includes idea nav chips for other ideas from
- * the same article. Expandable to full width.
+ * Sidebar — hidden by default, slides in on dive.
+ *
+ * Two sections:
+ *   Top: Node card (kind icon, label, synthesis, quote, connections)
+ *   Bottom: Scrollable full article with highlighted quote
+ *
+ * Resizable via drag handle on left edge.
  */
+
+const KIND_ICONS = {
+  question: '?',
+  tension: '\u2194',
+  image: '\u2726',
+  turn: '\u21A9',
+};
+
+const KIND_LABELS = {
+  question: 'Question',
+  tension: 'Tension',
+  image: 'Image',
+  turn: 'Turn',
+};
 
 export class Sidebar {
   constructor(element) {
@@ -11,11 +29,12 @@ export class Sidebar {
     this._highlightMinimapCallback = null;
     this._currentIdea = null;
     this._currentPost = null;
+    this._allIdeas = [];
 
     this.closeBtn = document.getElementById('sidebar-close');
     this.resizeHandle = document.getElementById('sidebar-resize-handle');
     this.titleEl = document.getElementById('sidebar-title');
-    this.ideaNavEl = document.getElementById('sidebar-idea-nav');
+    this.nodeCardEl = document.getElementById('sidebar-node-card');
     this.bodyEl = document.getElementById('sidebar-body');
 
     this._onClose = null;
@@ -61,8 +80,13 @@ export class Sidebar {
     }
   }
 
+  /** Store full ideas array so we can resolve connections */
+  setIdeas(allIdeas) {
+    this._allIdeas = allIdeas;
+  }
+
   /**
-   * Show the sidebar with a full article, highlighting the current quote.
+   * Show the sidebar with node card + full article.
    */
   show(idea, post, siblingIdeas) {
     this._currentIdea = idea;
@@ -73,80 +97,39 @@ export class Sidebar {
       this.titleEl.textContent = post ? post.title : '';
     }
 
+    // Node card
+    this._renderNodeCard(idea, siblingIdeas);
+
     // Article body
     if (this.bodyEl && post) {
       this.bodyEl.innerHTML = post.html || '';
-      // Scroll to top first
       this.bodyEl.scrollTop = 0;
-      // Highlight the quote after a tick so DOM is settled — instant scroll on open
       requestAnimationFrame(() => {
         this._highlightQuote(idea.quote, 'instant');
       });
     }
 
-    // Idea nav chips
-    if (this.ideaNavEl) {
-      this.ideaNavEl.innerHTML = '';
-      if (siblingIdeas && siblingIdeas.length > 0) {
-        for (const sibling of siblingIdeas) {
-          const chip = document.createElement('button');
-          chip.className = 'idea-chip';
-          if (sibling.id === idea.id) {
-            chip.classList.add('idea-chip-active');
-          }
-          chip.textContent = sibling.summary || sibling.topic;
-          chip._ideaId = sibling.id;
-          chip.addEventListener('click', () => {
-            if (this._navigateCallback) {
-              this._navigateCallback(sibling);
-            }
-          });
-          chip.addEventListener('mouseenter', () => {
-            if (this._highlightMinimapCallback) {
-              this._highlightMinimapCallback(sibling);
-            }
-          });
-          chip.addEventListener('mouseleave', () => {
-            if (this._highlightMinimapCallback) {
-              this._highlightMinimapCallback(null);
-            }
-          });
-          this.ideaNavEl.appendChild(chip);
-        }
-      }
-    }
-
-    // Slide in
     this.element.classList.remove('sidebar-hidden');
   }
 
   /**
-   * Update the highlighted quote when switching to a new idea
-   * (same article).
+   * Update when switching to a new idea (same or different article).
    */
   updateHighlight(idea) {
     this._currentIdea = idea;
 
-    // Remove old highlights
-    this._clearHighlights();
+    // Update node card
+    const post = this._currentPost;
+    const siblings = this._allIdeas.filter(i => i.post_id === idea.post_id);
+    this._renderNodeCard(idea, siblings);
 
-    // Highlight the new quote — smooth scroll when already open
+    // Update article highlight
+    this._clearHighlights();
     requestAnimationFrame(() => {
       this._highlightQuote(idea.quote, 'smooth');
     });
-
-    // Update active chip
-    if (this.ideaNavEl) {
-      const chips = this.ideaNavEl.querySelectorAll('.idea-chip');
-      for (const chip of chips) {
-        chip.classList.toggle('idea-chip-active', chip._ideaId === idea.id);
-      }
-    }
   }
 
-  /**
-   * Hide the sidebar.
-   */
   hide() {
     this.element.classList.add('sidebar-hidden');
     this._currentIdea = null;
@@ -169,6 +152,111 @@ export class Sidebar {
     this._onClose = callback;
   }
 
+  // ── Node Card ────────────────────────────────────────────────────────
+
+  _renderNodeCard(idea, siblingIdeas) {
+    if (!this.nodeCardEl) return;
+
+    const icon = KIND_ICONS[idea.kind] || '';
+    const kindLabel = KIND_LABELS[idea.kind] || '';
+
+    // Build connections HTML
+    let connectionsHtml = '';
+    if (idea.connections) {
+      const links = [];
+      if (idea.connections.nearby) {
+        const nearby = this._allIdeas.find(i => i.id === idea.connections.nearby);
+        if (nearby) {
+          links.push({ idea: nearby, type: 'nearby' });
+        }
+      }
+      if (idea.connections.far) {
+        const far = this._allIdeas.find(i => i.id === idea.connections.far);
+        if (far) {
+          links.push({ idea: far, type: 'far' });
+        }
+      }
+
+      if (links.length > 0) {
+        connectionsHtml = '<div class="node-connections">';
+        for (const link of links) {
+          const typeLabel = link.type === 'nearby' ? 'Nearby' : 'Across the map';
+          const linkIcon = KIND_ICONS[link.idea.kind] || '';
+          connectionsHtml += `<button class="node-connection" data-idea-id="${link.idea.id}">
+            <span class="connection-type">${typeLabel}</span>
+            <span class="connection-label">${linkIcon} ${link.idea.label}</span>
+          </button>`;
+        }
+        connectionsHtml += '</div>';
+      }
+    }
+
+    // Build sibling chips
+    let chipsHtml = '';
+    if (siblingIdeas && siblingIdeas.length > 1) {
+      chipsHtml = '<div class="node-siblings">';
+      for (const sib of siblingIdeas) {
+        const active = sib.id === idea.id ? ' idea-chip-active' : '';
+        const sibIcon = KIND_ICONS[sib.kind] || '';
+        chipsHtml += `<button class="idea-chip${active}" data-idea-id="${sib.id}">${sibIcon} ${sib.label}</button>`;
+      }
+      chipsHtml += '</div>';
+    }
+
+    this.nodeCardEl.innerHTML = `
+      <div class="node-kind"><span class="kind-icon">${icon}</span> ${kindLabel}</div>
+      <div class="node-label">${idea.label}</div>
+      <div class="node-synthesis">${idea.synthesis || ''}</div>
+      <blockquote class="node-quote">${idea.quote}</blockquote>
+      ${connectionsHtml}
+      ${chipsHtml}
+    `;
+
+    // Wire up connection clicks
+    for (const btn of this.nodeCardEl.querySelectorAll('.node-connection')) {
+      btn.addEventListener('click', () => {
+        const targetId = btn.dataset.ideaId;
+        const target = this._allIdeas.find(i => i.id === targetId);
+        if (target && this._navigateCallback) {
+          this._navigateCallback(target);
+        }
+      });
+      btn.addEventListener('mouseenter', () => {
+        const targetId = btn.dataset.ideaId;
+        const target = this._allIdeas.find(i => i.id === targetId);
+        if (target && this._highlightMinimapCallback) {
+          this._highlightMinimapCallback(target);
+        }
+      });
+      btn.addEventListener('mouseleave', () => {
+        if (this._highlightMinimapCallback) this._highlightMinimapCallback(null);
+      });
+    }
+
+    // Wire up sibling chip clicks
+    for (const chip of this.nodeCardEl.querySelectorAll('.idea-chip')) {
+      chip.addEventListener('click', () => {
+        const targetId = chip.dataset.ideaId;
+        const target = this._allIdeas.find(i => i.id === targetId);
+        if (target && this._navigateCallback) {
+          this._navigateCallback(target);
+        }
+      });
+      chip.addEventListener('mouseenter', () => {
+        const targetId = chip.dataset.ideaId;
+        const target = this._allIdeas.find(i => i.id === targetId);
+        if (target && this._highlightMinimapCallback) {
+          this._highlightMinimapCallback(target);
+        }
+      });
+      chip.addEventListener('mouseleave', () => {
+        if (this._highlightMinimapCallback) this._highlightMinimapCallback(null);
+      });
+    }
+  }
+
+  // ── Quote Highlighting ───────────────────────────────────────────────
+
   _clearHighlights() {
     if (!this.bodyEl) return;
     const marks = this.bodyEl.querySelectorAll('mark.current-quote');
@@ -179,10 +267,6 @@ export class Sidebar {
     }
   }
 
-  /**
-   * Normalize text for fuzzy matching — collapse whitespace, strip
-   * punctuation variations, lowercase.
-   */
   _normalizeForSearch(str) {
     return str
       .toLowerCase()
@@ -195,20 +279,13 @@ export class Sidebar {
       .trim();
   }
 
-  /**
-   * Highlight a quote in the rendered HTML using TreeWalker.
-   * Uses fuzzy matching to handle whitespace/entity differences.
-   */
   _highlightQuote(quote, scrollBehavior = 'smooth') {
     if (!quote || !this.bodyEl) return;
 
     const walker = document.createTreeWalker(
-      this.bodyEl,
-      NodeFilter.SHOW_TEXT,
-      null,
+      this.bodyEl, NodeFilter.SHOW_TEXT, null,
     );
 
-    // Build the full text content to find the quote position
     const textNodes = [];
     let fullText = '';
     let node;
@@ -217,56 +294,40 @@ export class Sidebar {
       fullText += node.textContent;
     }
 
-    // Try exact match first, then progressively fuzzier
     let idx = -1;
     let matchLen = quote.length;
 
-    // Attempt 1: case-insensitive exact
     idx = fullText.toLowerCase().indexOf(quote.toLowerCase());
 
-    // Attempt 2: normalized (collapse whitespace, fix smart quotes)
     if (idx === -1) {
       const normFull = this._normalizeForSearch(fullText);
       const normQuote = this._normalizeForSearch(quote);
       const normIdx = normFull.indexOf(normQuote);
-
       if (normIdx !== -1) {
-        // Map normalized index back to original index
-        idx = this._mapNormIndexToOriginal(fullText, normFull, normIdx);
-        matchLen = this._findMatchEndInOriginal(fullText, idx, normQuote.length, normFull);
+        idx = this._mapNormIndexToOriginal(fullText, normIdx);
+        matchLen = this._findMatchEndInOriginal(fullText, idx, normQuote.length);
       }
     }
 
-    // Attempt 3: first 50 chars of the quote (handles LLM truncation)
     if (idx === -1 && quote.length > 50) {
-      const shortQuote = quote.slice(0, 50);
       const normFull = this._normalizeForSearch(fullText);
-      const normShort = this._normalizeForSearch(shortQuote);
+      const normShort = this._normalizeForSearch(quote.slice(0, 50));
       const normIdx = normFull.indexOf(normShort);
-
       if (normIdx !== -1) {
-        idx = this._mapNormIndexToOriginal(fullText, normFull, normIdx);
-        // Extend match to the end of the sentence or ~quote length
-        matchLen = this._findMatchEndInOriginal(fullText, idx, normShort.length, normFull);
+        idx = this._mapNormIndexToOriginal(fullText, normIdx);
+        matchLen = this._findMatchEndInOriginal(fullText, idx, normShort.length);
       }
     }
 
-    // Attempt 4: word-based subsequence (find longest matching word run)
     if (idx === -1) {
       const words = quote.toLowerCase().split(/\s+/).filter(w => w.length > 3);
       if (words.length >= 3) {
-        // Search for first 3 significant words appearing in sequence
-        const searchStr = words.slice(0, 3).join('.*?');
+        const escaped = words.slice(0, 3).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         try {
-          const re = new RegExp(searchStr, 'i');
+          const re = new RegExp(escaped.join('.*?'), 'i');
           const m = fullText.match(re);
-          if (m) {
-            idx = m.index;
-            matchLen = m[0].length;
-          }
-        } catch (_) {
-          // regex failed, skip
-        }
+          if (m) { idx = m.index; matchLen = m[0].length; }
+        } catch (_) {}
       }
     }
 
@@ -275,86 +336,51 @@ export class Sidebar {
     const quoteEnd = idx + matchLen;
     let scrolledToFirst = false;
 
-    // Find which text nodes contain the quote range and wrap them
     for (let i = 0; i < textNodes.length; i++) {
       const tn = textNodes[i];
       const tnEnd = tn.start + tn.node.textContent.length;
-
       if (tnEnd <= idx || tn.start >= quoteEnd) continue;
 
       const overlapStart = Math.max(0, idx - tn.start);
       const overlapEnd = Math.min(tn.node.textContent.length, quoteEnd - tn.start);
-
       const textContent = tn.node.textContent;
-      const before = textContent.slice(0, overlapStart);
-      const match = textContent.slice(overlapStart, overlapEnd);
-      const after = textContent.slice(overlapEnd);
 
-      const parent = tn.node.parentNode;
       const frag = document.createDocumentFragment();
-
-      if (before) frag.appendChild(document.createTextNode(before));
+      if (overlapStart > 0) frag.appendChild(document.createTextNode(textContent.slice(0, overlapStart)));
 
       const mark = document.createElement('mark');
       mark.className = 'current-quote';
-      mark.textContent = match;
+      mark.textContent = textContent.slice(overlapStart, overlapEnd);
       frag.appendChild(mark);
 
-      if (after) frag.appendChild(document.createTextNode(after));
+      if (overlapEnd < textContent.length) frag.appendChild(document.createTextNode(textContent.slice(overlapEnd)));
+      tn.node.parentNode.replaceChild(frag, tn.node);
 
-      parent.replaceChild(frag, tn.node);
-
-      // Scroll the first mark into view
       if (!scrolledToFirst) {
         scrolledToFirst = true;
-        setTimeout(() => {
-          mark.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
-        }, 150);
+        setTimeout(() => mark.scrollIntoView({ behavior: scrollBehavior, block: 'center' }), 150);
       }
     }
   }
 
-  /**
-   * Map an index in normalized text back to the original text.
-   */
-  _mapNormIndexToOriginal(original, _normalized, normIdx) {
-    let origIdx = 0;
-    let normCount = 0;
-    const origLower = original.toLowerCase();
-
+  _mapNormIndexToOriginal(original, normIdx) {
+    let origIdx = 0, normCount = 0;
     while (origIdx < original.length && normCount < normIdx) {
-      // Skip extra whitespace in original that was collapsed
-      if (/\s/.test(origLower[origIdx])) {
+      if (/\s/.test(original[origIdx])) {
         origIdx++;
-        if (normCount < normIdx && origIdx < original.length && !/\s/.test(origLower[origIdx])) {
-          normCount++; // The collapsed space
-        }
-      } else {
-        origIdx++;
-        normCount++;
-      }
+        if (normCount < normIdx && origIdx < original.length && !/\s/.test(original[origIdx])) normCount++;
+      } else { origIdx++; normCount++; }
     }
     return origIdx;
   }
 
-  /**
-   * Find how many chars in the original correspond to normLen chars
-   * in the normalized version, starting from origStart.
-   */
-  _findMatchEndInOriginal(original, origStart, normLen, _normalized) {
-    let origIdx = origStart;
-    let normCount = 0;
-
+  _findMatchEndInOriginal(original, origStart, normLen) {
+    let origIdx = origStart, normCount = 0;
     while (origIdx < original.length && normCount < normLen) {
       if (/\s/.test(original[origIdx])) {
         origIdx++;
-        if (normCount < normLen && origIdx < original.length && !/\s/.test(original[origIdx])) {
-          normCount++;
-        }
-      } else {
-        origIdx++;
-        normCount++;
-      }
+        if (normCount < normLen && origIdx < original.length && !/\s/.test(original[origIdx])) normCount++;
+      } else { origIdx++; normCount++; }
     }
     return origIdx - origStart;
   }

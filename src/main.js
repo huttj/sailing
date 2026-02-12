@@ -137,11 +137,13 @@ async function main() {
       quadtree.insert({ x: idea.x, y: idea.y, data: idea });
     }
 
-    // Island labels — added BEFORE point cloud so they render behind dots
-    islandLabels = new IslandLabels(worldContainer, topics);
-
-    // Point cloud
+    // Point cloud (build first so we can use its topic color map)
     pointCloud = new PointCloud(worldContainer, ideas);
+
+    // Island labels — added BEFORE dots in z-order
+    // We insert the label container behind the dot layer
+    islandLabels = new IslandLabels(worldContainer, topics, pointCloud.topicIndexMap);
+    worldContainer.setChildIndex(islandLabels.container, 0);
 
     // Ship graphics on top of dots
     worldContainer.addChild(shipGfx);
@@ -154,6 +156,8 @@ async function main() {
 
     // Sidebar
     sidebar = new Sidebar(document.getElementById('sidebar'));
+
+    sidebar.setIdeas(ideas);
 
     // Wire sidebar callbacks
     sidebar.onNavigate((idea) => {

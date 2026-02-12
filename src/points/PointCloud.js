@@ -1,8 +1,8 @@
 /**
  * PointCloud — manages rendering of all idea dots on the Pixi.js stage.
  *
- * Each idea becomes a small Graphics circle, color-coded by topic using a
- * golden-ratio hue spread. All dots are always visible — no proximity fading.
+ * Each idea is a colored dot that becomes a kind icon (?, ↔, ✦, ↩)
+ * as you get closer. Color-coded by topic using a golden-ratio hue spread.
  * Labels appear on nearest dots.
  */
 
@@ -36,6 +36,17 @@ function hslToHex(h, s, l) {
 const GOLDEN_RATIO = 0.618033988749895;
 const LABEL_POOL_SIZE = 40;
 
+const KIND_ICONS = {
+  question: '?',
+  tension: '\u2194',
+  image: '\u2726',
+  turn: '\u21A9',
+};
+
+const ICON_THRESHOLD = 300;      // world units — switch to icon below this
+const ICON_BAND = 30;            // transition band width (snap, not gradual)
+const ICON_LERP = 0.15;          // animation speed per frame
+
 const LABEL_STYLE = new TextStyle({
   fontFamily: 'Inter, system-ui, sans-serif',
   fontSize: 13,
@@ -58,11 +69,14 @@ export class PointCloud {
       }
     }
 
-    // One Graphics circle per idea
+    // Layers: dots behind icons behind labels
     this.dots = [];
+    this.icons = [];
     this.dotLayer = new Container();
+    this.iconLayer = new Container();
     this.labelLayer = new Container();
     container.addChild(this.dotLayer);
+    container.addChild(this.iconLayer);
     container.addChild(this.labelLayer);
 
     for (const idea of ideas) {
@@ -70,24 +84,40 @@ export class PointCloud {
       const hue = (topicIdx * GOLDEN_RATIO) % 1;
       const color = hslToHex(hue, 0.65, 0.55);
 
+      // Dot (always visible)
       const dot = new Graphics();
       dot.circle(0, 0, 5);
       dot.fill({ color });
-
       dot.x = idea.x;
       dot.y = idea.y;
-
       dot._ideaId = idea.id;
       dot._baseColor = color;
-
       this.dotLayer.addChild(dot);
       this.dots.push(dot);
+
+      // Kind icon (snaps in when close, high-res for zoom)
+      const iconChar = KIND_ICONS[idea.kind] || '·';
+      const iconStyle = new TextStyle({
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: 16,
+        fill: color,
+        fontWeight: 'bold',
+      });
+      const icon = new Text({ text: iconChar, style: iconStyle, resolution: 8 });
+      icon.anchor.set(0.5, 0.5);
+      icon.x = idea.x;
+      icon.y = idea.y;
+      icon.visible = false;
+      icon.alpha = 0;
+      icon._iconState = 0; // 0 = dot, 1 = icon (animated)
+      this.iconLayer.addChild(icon);
+      this.icons.push(icon);
     }
 
     // Reusable label pool
     this.labelPool = [];
     for (let i = 0; i < LABEL_POOL_SIZE; i++) {
-      const label = new Text({ text: '', style: LABEL_STYLE });
+      const label = new Text({ text: '', style: LABEL_STYLE, resolution: 4 });
       label.visible = false;
       label.anchor.set(0, 0.5);
       this.labelLayer.addChild(label);
@@ -102,12 +132,20 @@ export class PointCloud {
   }
 
   /**
-   * Called each frame to manage label assignment with overlap prevention.
-   * Dots are always visible — only labels are proximity-based.
+   * Called each frame to manage icons and labels.
+   * Dots are always visible — icons and labels are proximity-based.
    */
   update(shipX, shipY, camera) {
     const vp = camera.getViewport();
+    const zoom = camera.zoom;
     const pad = 200;
+
+    // Scale dots up when zoomed out so they stay visible
+    // At zoom 1.0 → scale 1, at zoom 0.14 → scale ~3.5
+    const dotScale = Math.min(5, Math.max(1, 0.5 / zoom));
+    this.dotLayer.children.forEach(dot => {
+      dot.scale.set(dotScale);
+    });
 
     // Collect visible ideas sorted by distance to ship
     const visibleByDist = [];
@@ -117,21 +155,47 @@ export class PointCloud {
       const wx = idea.x;
       const wy = idea.y;
 
-      // Viewport culling only — dots are always full alpha when in view
-      if (wx < vp.left - pad || wx > vp.right + pad ||
-          wy < vp.top - pad || wy > vp.bottom + pad) {
+      // Viewport culling
+      const inView = wx >= vp.left - pad && wx <= vp.right + pad &&
+                     wy >= vp.top - pad && wy <= vp.bottom + pad;
+
+      if (!inView) {
+        this.icons[i].visible = false;
         continue;
       }
 
       const dx = wx - shipX;
       const dy = wy - shipY;
       const distSq = dx * dx + dy * dy;
-      visibleByDist.push({ index: i, distSq, wx, wy });
+      const dist = Math.sqrt(distSq);
+
+      // Threshold snap: dot ↔ icon with quick animated transition
+      const wantIcon = dist < ICON_THRESHOLD;
+      const target = wantIcon ? 1 : 0;
+      const state = this.icons[i]._iconState;
+      const next = state + (target - state) * ICON_LERP;
+      this.icons[i]._iconState = Math.abs(next - target) < 0.01 ? target : next;
+
+      const s = this.icons[i]._iconState;
+      if (s > 0.01) {
+        this.icons[i].visible = true;
+        this.icons[i].alpha = s;
+      } else {
+        this.icons[i].visible = false;
+      }
+      if (s < 0.99) {
+        this.dots[i].visible = true;
+        this.dots[i].alpha = 1 - s;
+      } else {
+        this.dots[i].visible = false;
+      }
+
+      visibleByDist.push({ index: i, distSq, dist, wx, wy });
     }
 
     visibleByDist.sort((a, b) => a.distSq - b.distSq);
 
-    // First pass: assign text and tentative positions
+    // First pass: assign labels to nearest dots
     const candidates = [];
     const labelCount = Math.min(visibleByDist.length, this.labelPool.length);
 
@@ -139,20 +203,17 @@ export class PointCloud {
       const label = this.labelPool[i];
       const entry = visibleByDist[i];
       const idea = this.ideas[entry.index];
-      const dist = Math.sqrt(entry.distSq);
 
-      // Always show the summary — it's the buoy text on the surface.
-      // Quotes are for the sidebar when you dive in.
       let labelText = '';
-      if (dist < 500) {
-        labelText = idea.summary || '';
+      if (entry.dist < 500) {
+        labelText = idea.label || '';
       }
 
       if (labelText) {
         label.text = labelText;
         label.x = entry.wx + 12;
         label.y = entry.wy;
-        label.alpha = Math.max(0.3, 1 - dist / 800);
+        label.alpha = Math.max(0.3, 1 - entry.dist / 800);
 
         const w = label.width;
         const h = label.height;

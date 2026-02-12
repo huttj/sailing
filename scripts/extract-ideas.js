@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const DATA_DIR = `${ROOT}/public/data`;
-const BATCH_CONCURRENCY = 5;
+const BATCH_CONCURRENCY = 20;
 
 // ── Initialize OpenAI client ─────────────────────────────────────────
 const apiKey = process.env.OPENAI_API_KEY;
@@ -28,12 +28,16 @@ const titleList = postIds.map((id, i) => {
 }).join('\n');
 
 const topicResponse = await openai.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-5.2',
   temperature: 0.3,
   messages: [
     {
       role: 'system',
-      content: `You are an expert content analyst. Given a list of blog post titles and subtitles, identify 10–20 broad topic categories that cover the themes across all posts. Return ONLY a JSON array of topic label strings. Example: ["Philosophy", "Technology & Society", "Relationships"]`,
+      content: `You are an expert content analyst. Given a list of blog post titles and subtitles, identify 8–12 broad topic categories that cover the themes across all posts.
+
+CRITICAL: Each topic must be clearly distinct from every other topic. NO overlapping or synonymous categories. For example, do NOT have both "Self-Reflection" and "Personal Growth" or both "Mental Health" and "Anxiety." Merge related themes into one well-named bucket. Aim for 8–12 categories total — fewer is better than redundant.
+
+Return ONLY a JSON array of topic label strings. Example: ["Philosophy", "Technology & Society", "Relationships"]`,
     },
     {
       role: 'user',
@@ -45,7 +49,6 @@ const topicResponse = await openai.chat.completions.create({
 let topics;
 try {
   const raw = topicResponse.choices[0].message.content.trim();
-  // Strip markdown code fences if present
   const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
   topics = JSON.parse(cleaned);
 } catch (e) {
@@ -80,31 +83,39 @@ async function extractIdeasFromPost(postId) {
   const post = posts[postId];
   const plainText = htmlToPlainText(post.html);
 
-  // Truncate very long posts to ~6000 chars to stay within context
   const truncated = plainText.length > 6000
     ? plainText.slice(0, 6000) + '...'
     : plainText;
 
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    temperature: 0.3,
+    model: 'gpt-5.2',
+    temperature: 0.5,
     messages: [
       {
         role: 'system',
-        content: `You are extracting key ideas from a personal blog post. Given the post and a list of topics, extract 2–6 ideas.
+        content: `You are doing archaeological extraction on a personal blog post. You're looking for charged fragments — the live wires running through the writing. Extract 2–6 fragments per post.
 
-For each idea, return:
+Each fragment is one of four kinds:
+- "question": A question the writing is wrestling with — not stated explicitly, but the question underneath. Often the author never says it directly, but it's the live wire. Frame it as an actual question.
+- "tension": A tension or contradiction being held — two things that don't resolve. Format as "X / Y" or a short phrase capturing the push-pull.
+- "image": A vivid image or metaphor the author actually used — the specific language when they were seeing, not explaining. Pick the most charged, poetic, or surprising phrasing.
+- "turn": A moment where the thinking shifted mid-entry — a realization, a pivot, an "oh." Frame it as "The moment when..." or similar.
+
+For each fragment, return:
 - "topic": one of the provided topic labels (must match exactly)
-- "claim": a bold, assertive claim in 5–15 words. This should read like a provocative opinion or thesis — something a reader would react to with "hmm, do I agree?" NOT a bland description or summary. Write it as a first-person belief or a universal assertion.
-  BAD: "Encouraging introspection about engagement and value"
-  BAD: "The importance of questioning daily habits"
-  GOOD: "We need to ask ourselves why we're doing what we're doing"
-  GOOD: "Most of what we call connection is just proximity"
-  GOOD: "You can't hold on to someone and let them grow at the same time"
-- "quote": a verbatim quote from the text (copy exact words from the post, 10–60 words)
+- "kind": one of "question", "tension", "image", "turn"
+- "label": the evocative one-liner that would appear on a map. This is what draws a reader in from a distance.
+  For questions: the question itself, e.g. "Who are you performing for when no one's watching?"
+  For tensions: the contradiction, e.g. "Wanting solitude / fearing irrelevance"
+  For images: the key image, e.g. "Grief is the house you keep returning to"
+  For turns: the pivot, e.g. "The moment I realized I was describing my father"
+  Keep it under 15 words. Make it magnetic.
+- "synthesis": 2–3 sentences written as the author's own reflection — first person, intimate, like you're overhearing them think out loud. NOT a literary analysis or third-person summary. Don't say "the author" or "this piece explores." Instead, channel the author's voice: what they're sitting with, what they can't resolve, what they're noticing.
+  CRITICAL: Include enough concrete context that a reader who hasn't read the post understands what's being described. Name the SPECIFIC thing — don't hide behind vague abstractions like "compulsive workaround" or "transformative process." If the author is talking about how they try to control outcomes because good things ending terrifies them, SAY that. Ground every synthesis in the actual content.
+- "quote": a verbatim quote from the text (copy exact words, 10–80 words). Pick the most alive passage — where the author was cooking.
 
 Return ONLY a JSON array. Example:
-[{"topic": "Philosophy", "claim": "Meaning isn't found — it's built through repetition", "quote": "Each morning I sit with the question..."}]`,
+[{"topic": "Identity", "kind": "question", "label": "Who are you performing for when no one's watching?", "synthesis": "There's this gap between who I am alone and who I become around other people. I keep circling it without landing — like naming it would collapse the superposition.", "quote": "I wonder sometimes if the version of me that exists in their minds is more real than the one I experience..."}]`,
       },
       {
         role: 'user',
@@ -129,26 +140,27 @@ Return ONLY a JSON array. Example:
 
   for (let i = 0; i < ideas.length; i++) {
     const idea = ideas[i];
-    if (!idea.topic || !idea.claim || !idea.quote) continue;
+    if (!idea.topic || !idea.kind || !idea.label || !idea.quote) continue;
+
+    // Validate kind
+    if (!['question', 'tension', 'image', 'turn'].includes(idea.kind)) continue;
 
     // Validate quote exists in post text (case-insensitive)
     const quoteLower = idea.quote.toLowerCase();
     if (plainLower.indexOf(quoteLower) === -1) {
-      // Try a shorter version (first 40 chars) as fallback
       const shortQuote = quoteLower.slice(0, 40);
       if (shortQuote.length < 10 || plainLower.indexOf(shortQuote) === -1) {
-        continue; // Drop this idea
+        continue;
       }
     }
 
     // Validate topic is in our list
     if (!topics.includes(idea.topic)) {
-      // Try to find closest match
       const match = topics.find(t => t.toLowerCase() === idea.topic.toLowerCase());
       if (match) {
         idea.topic = match;
       } else {
-        continue; // Drop ideas with unknown topics
+        continue;
       }
     }
 
@@ -156,9 +168,11 @@ Return ONLY a JSON array. Example:
       id: `${postId}_${i}`,
       post_id: postId,
       topic: idea.topic,
-      summary: idea.claim,
+      kind: idea.kind,
+      label: idea.label,
+      synthesis: idea.synthesis || '',
       quote: idea.quote,
-      text_for_embedding: `${idea.topic}: ${idea.claim}\n${idea.quote}`,
+      text_for_embedding: `${idea.label}\n${idea.synthesis}\n${idea.quote}`,
     });
   }
 
@@ -182,4 +196,5 @@ for (let i = 0; i < postIds.length; i += BATCH_CONCURRENCY) {
 // ── Write output ─────────────────────────────────────────────────────
 writeFileSync(`${DATA_DIR}/ideas-raw.json`, JSON.stringify(allIdeas, null, 2));
 console.log(`\nWrote ${DATA_DIR}/ideas-raw.json (${allIdeas.length} ideas from ${postIds.length} posts)`);
+console.log(`Kinds: ${JSON.stringify(allIdeas.reduce((a, i) => { a[i.kind] = (a[i.kind] || 0) + 1; return a; }, {}))}`);
 console.log(`Topics used: ${[...new Set(allIdeas.map(i => i.topic))].join(', ')}`);
