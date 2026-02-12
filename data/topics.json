@@ -1,68 +1,62 @@
 [
   {
-    "name": "Emotional Regulation & Inner Struggle",
-    "x": -1835.65,
-    "y": 431.45,
-    "count": 89
+    "name": "Emotional Regulation & Inner Stability",
+    "x": -2350.9,
+    "y": -928.15,
+    "count": 88
   },
   {
-    "name": "Meaning, Purpose & Existential Inquiry",
-    "x": -83.06,
-    "y": 532.12,
-    "count": 52
-  },
-  {
-    "name": "Relationships, Intimacy & Mutuality",
-    "x": -3148.98,
-    "y": -289.82,
-    "count": 36
+    "name": "Philosophy, Meaning & Epistemology",
+    "x": -256.01,
+    "y": 1254.78,
+    "count": 64
   },
   {
     "name": "Personal Change & Life Transitions",
-    "x": -1515.74,
-    "y": 1798.27,
-    "count": 36
+    "x": -1977.08,
+    "y": -1046.91,
+    "count": 49
   },
   {
-    "name": "Work, Building & Impact (Projects & Craft)",
-    "x": 704.23,
-    "y": -1994.03,
-    "count": 35
+    "name": "Work, Motivation & Building Practices",
+    "x": 1009.49,
+    "y": 94.04,
+    "count": 46
   },
   {
-    "name": "AI, LLMs & Human–Machine Collaboration",
-    "x": 4042.9,
-    "y": -406.01,
+    "name": "Relationships, Intimacy & Mutuality",
+    "x": -2900.6,
+    "y": 585.83,
+    "count": 42
+  },
+  {
+    "name": "AI, LLMs & Human–Machine Interaction",
+    "x": 2969.56,
+    "y": 1760.16,
     "count": 32
   },
   {
-    "name": "Belief Systems, Memetics & Sensemaking",
-    "x": 1375.93,
-    "y": -745.46,
-    "count": 28
-  },
-  {
     "name": "Institutions, Culture & Socioeconomic Systems",
-    "x": 1216.23,
-    "y": -3372.36,
-    "count": 27
-  },
-  {
-    "name": "Grief, Loss & Letting Go",
-    "x": -3805.3,
-    "y": 3216,
-    "count": 22
-  },
-  {
-    "name": "Communication, Conversation & Conflict Dynamics",
-    "x": 18.18,
-    "y": -2575.36,
-    "count": 20
+    "x": 1969.18,
+    "y": 1005.2,
+    "count": 26
   },
   {
     "name": "Creativity, Art & Aesthetic Living",
-    "x": 1559.53,
-    "y": 1406.37,
-    "count": 16
+    "x": -288.98,
+    "y": -1357.81,
+    "count": 18
+  },
+  {
+    "name": "Communication, Conversation & Conflict",
+    "x": -424.86,
+    "y": 3027.65,
+    "count": 15
+  },
+  {
+    "name": "Grief, Loss & Letting Go",
+    "x": -3450.74,
+    "y": -3588.66,
+    "count": 13
   }
 ]
