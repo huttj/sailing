@@ -22,6 +22,20 @@ const KIND_LABELS = {
   turn: 'Turn',
 };
 
+// Per-icon vertical offset (px) to fix baseline alignment
+const KIND_VALIGN = {
+  question: 0,
+  tension: -2,
+  image: -1,
+  turn: -2,
+};
+
+function iconSpan(kind, cls = 'chip-icon') {
+  const icon = KIND_ICONS[kind] || '';
+  const v = KIND_VALIGN[kind] || 0;
+  return `<span class="${cls}" style="vertical-align:${v}px">${icon}</span>`;
+}
+
 export class Sidebar {
   constructor(element) {
     this.element = element;
@@ -157,7 +171,6 @@ export class Sidebar {
   _renderNodeCard(idea, siblingIdeas) {
     if (!this.nodeCardEl) return;
 
-    const icon = KIND_ICONS[idea.kind] || '';
     const kindLabel = KIND_LABELS[idea.kind] || '';
 
     // Build connections HTML
@@ -181,10 +194,9 @@ export class Sidebar {
         connectionsHtml = '<div class="node-connections">';
         for (const link of links) {
           const typeLabel = link.type === 'nearby' ? 'Nearby' : 'Across the map';
-          const linkIcon = KIND_ICONS[link.idea.kind] || '';
           connectionsHtml += `<button class="node-connection" data-idea-id="${link.idea.id}">
             <span class="connection-type">${typeLabel}</span>
-            <span class="connection-label">${linkIcon} ${link.idea.label}</span>
+            <span class="connection-label">${iconSpan(link.idea.kind)}${link.idea.label}</span>
           </button>`;
         }
         connectionsHtml += '</div>';
@@ -194,17 +206,16 @@ export class Sidebar {
     // Build sibling chips
     let chipsHtml = '';
     if (siblingIdeas && siblingIdeas.length > 1) {
-      chipsHtml = '<div class="node-siblings">';
+      chipsHtml = '<div class="node-siblings"><div class="node-siblings-label">From this article</div>';
       for (const sib of siblingIdeas) {
         const active = sib.id === idea.id ? ' idea-chip-active' : '';
-        const sibIcon = KIND_ICONS[sib.kind] || '';
-        chipsHtml += `<button class="idea-chip${active}" data-idea-id="${sib.id}">${sibIcon} ${sib.label}</button>`;
+        chipsHtml += `<button class="idea-chip${active}" data-idea-id="${sib.id}">${iconSpan(sib.kind)}${sib.label}</button>`;
       }
       chipsHtml += '</div>';
     }
 
     this.nodeCardEl.innerHTML = `
-      <div class="node-kind"><span class="kind-icon">${icon}</span> ${kindLabel}</div>
+      <div class="node-kind">${iconSpan(idea.kind, 'kind-icon')} ${kindLabel}</div>
       <div class="node-label">${idea.label}</div>
       <div class="node-synthesis">${idea.synthesis || ''}</div>
       <blockquote class="node-quote">${idea.quote}</blockquote>

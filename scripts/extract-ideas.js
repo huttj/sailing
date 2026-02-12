@@ -3,7 +3,6 @@ import OpenAI from 'openai';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const DATA_DIR = `${ROOT}/public/data`;
-const BATCH_CONCURRENCY = 20;
 
 // ── Initialize OpenAI client ─────────────────────────────────────────
 const apiKey = process.env.OPENAI_API_KEY;
@@ -73,7 +72,7 @@ function htmlToPlainText(html) {
 }
 
 // ── Pass 2: Per-post Idea Extraction ─────────────────────────────────
-console.log(`\n--- Pass 2: Per-post Extraction (${postIds.length} posts, ${BATCH_CONCURRENCY} at a time) ---`);
+console.log(`\n--- Pass 2: Per-post Extraction (${postIds.length} posts, all parallel) ---`);
 
 const topicListStr = topics.map((t, i) => `${i + 1}. ${t}`).join('\n');
 const allIdeas = [];
@@ -184,13 +183,10 @@ Return ONLY a JSON array. Example:
   return validated;
 }
 
-// Process in batches of BATCH_CONCURRENCY
-for (let i = 0; i < postIds.length; i += BATCH_CONCURRENCY) {
-  const batch = postIds.slice(i, i + BATCH_CONCURRENCY);
-  const batchResults = await Promise.all(batch.map(extractIdeasFromPost));
-  for (const ideas of batchResults) {
-    allIdeas.push(...ideas);
-  }
+// Fire all posts in parallel — OpenAI SDK handles rate limit retries
+const allResults = await Promise.all(postIds.map(extractIdeasFromPost));
+for (const ideas of allResults) {
+  allIdeas.push(...ideas);
 }
 
 // ── Write output ─────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ const DIVE_THRESHOLD = 150;
 // ── Tunable zoom/visibility settings ─────────────────────────────────
 const settings = {
   zoomOutMin: 0.20,     // zoom when far from everything (see constellations)
-  zoomInMax: 1.0,       // zoom when right next to a dot (readable labels)
+  zoomInMax: 2.0,       // zoom when right next to a dot (readable labels)
   farThreshold: 600,    // distance beyond which you're fully zoomed out
   closeThreshold: 40,   // distance within which you're fully zoomed in
   diveZoom: 2.0,        // zoom level when diving

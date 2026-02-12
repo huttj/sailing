@@ -11,7 +11,8 @@
     "extract": "node scripts/extract-ideas.js",
     "embed": "node scripts/embed-ideas.js",
     "project": "node scripts/project-2d.js",
-    "pipeline": "node scripts/build-data.js"
+    "pipeline": "node scripts/build-data.js",
+    "deploy": "GH_PAGES=1 vite build && npx gh-pages -d dist"
   },
   "dependencies": {
     "pixi.js": "^8.6.6"
