@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="/sailing/assets/index-BuSbp6Uw.js"></script>
-  <link rel="stylesheet" crossorigin href="/sailing/assets/index-C9tNd8uv.css">
+  <script type="module" crossorigin src="/sailing/assets/index-2683TOgp.js"></script>
+  <link rel="stylesheet" crossorigin href="/sailing/assets/index-Bv5fR1n3.css">
 </head>
 <body>
   <div id="canvas-container"></div>
@@ -18,6 +18,7 @@
     <div id="sidebar-header">
       <button id="sidebar-close">&times;</button>
       <span id="sidebar-title"></span>
+      <div id="sidebar-voyage-actions"></div>
     </div>
     <div id="sidebar-node-card"></div>
     <div id="sidebar-body"></div>
@@ -27,10 +28,15 @@
     <canvas id="minimap-canvas" width="200" height="200"></canvas>
   </div>
 
+  <button id="voyage-toggle">Voyage Log</button>
+  <div id="voyage-panel"></div>
+
   <div id="settings-panel">
     <button id="settings-toggle">Settings &#9660;</button>
     <div id="settings-content"></div>
   </div>
+
+  <button id="theme-toggle">Light Mode</button>
 
   <div id="hud">
     <span class="hud-hint">Arrow keys to sail &middot; Space to dive</span>
