@@ -7,20 +7,21 @@ import { Graphics, Container } from 'pixi.js';
  * Uses Pixi v8 Graphics API.
  */
 
-const WAVE_LAYERS = [
-  { color: 0x0a3d5c, alpha: 0.35, amplitude: 12, frequency: 0.008, speed: 0.4, yBase: 0.25, thickness: 60 },
-  { color: 0x0e5a7e, alpha: 0.28, amplitude: 8, frequency: 0.012, speed: -0.3, yBase: 0.45, thickness: 50 },
-  { color: 0x1a7a8a, alpha: 0.22, amplitude: 6, frequency: 0.018, speed: 0.55, yBase: 0.6, thickness: 40 },
-  { color: 0x2e9ba0, alpha: 0.18, amplitude: 10, frequency: 0.006, speed: -0.2, yBase: 0.15, thickness: 70 },
-  { color: 0x146878, alpha: 0.25, amplitude: 5, frequency: 0.025, speed: 0.7, yBase: 0.75, thickness: 35 },
+const WAVE_CONFIGS = [
+  { amplitude: 12, frequency: 0.008, speed: 0.4, yBase: 0.25, thickness: 60 },
+  { amplitude: 8, frequency: 0.012, speed: -0.3, yBase: 0.45, thickness: 50 },
+  { amplitude: 6, frequency: 0.018, speed: 0.55, yBase: 0.6, thickness: 40 },
+  { amplitude: 10, frequency: 0.006, speed: -0.2, yBase: 0.15, thickness: 70 },
+  { amplitude: 5, frequency: 0.025, speed: 0.7, yBase: 0.75, thickness: 35 },
 ];
 
 const SPARKLE_COUNT = 40;
 
 export class WaterShader {
-  constructor(width, height) {
+  constructor(width, height, theme) {
     this.width = width;
     this.height = height;
+    this._theme = theme;
     this.container = new Container();
     this.waveLayers = [];
     this.sparkles = [];
@@ -29,7 +30,7 @@ export class WaterShader {
   }
 
   _buildLayers() {
-    for (const cfg of WAVE_LAYERS) {
+    for (const cfg of WAVE_CONFIGS) {
       const g = new Graphics();
       this.waveLayers.push({ graphics: g, config: cfg });
       this.container.addChild(g);
@@ -56,14 +57,21 @@ export class WaterShader {
     const w = this.width;
     const h = this.height;
     const step = 6;
+    const palette = this._theme ? this._theme.palette : null;
+    const waveColors = palette ? palette.waves : null;
+    const sparkleColor = palette ? palette.sparkleColor : 0xffffff;
 
-    for (const { graphics: g, config: cfg } of this.waveLayers) {
+    for (let li = 0; li < this.waveLayers.length; li++) {
+      const { graphics: g, config: cfg } = this.waveLayers[li];
       g.clear();
+
+      const wc = waveColors ? waveColors[li] : null;
+      const color = wc ? wc.color : [0x0a3d5c, 0x0e5a7e, 0x1a7a8a, 0x2e9ba0, 0x146878][li];
+      const alpha = wc ? wc.alpha : [0.35, 0.28, 0.22, 0.18, 0.25][li];
 
       const yCenter = h * cfg.yBase;
       const parallax = cfg.speed * 0.3;
 
-      // Build wave polyline path
       g.moveTo(-step, h + 10);
 
       for (let x = -step; x <= w + step; x += step) {
@@ -77,7 +85,7 @@ export class WaterShader {
 
       g.lineTo(w + step, h + 10);
       g.closePath();
-      g.fill({ color: cfg.color, alpha: cfg.alpha });
+      g.fill({ color, alpha });
     }
 
     // Sparkles
@@ -91,7 +99,7 @@ export class WaterShader {
       sp.graphics.clear();
       if (alpha > 0.05) {
         sp.graphics.circle(sx, sy, sp.size * alpha);
-        sp.graphics.fill({ color: 0xffffff, alpha });
+        sp.graphics.fill({ color: sparkleColor, alpha });
       }
     }
   }

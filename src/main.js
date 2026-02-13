@@ -4,13 +4,15 @@ import { Camera } from './camera/Camera.js';
 import { Ship } from './ship/Ship.js';
 import { ShipControls } from './ship/ShipControls.js';
 import { loadData } from './data/DataLoader.js';
-import { PointCloud } from './points/PointCloud.js';
+import { PointCloud, VISITED_FAR } from './points/PointCloud.js';
 import { PointQuadtree } from './points/PointQuadtree.js';
 import { LODManager } from './points/LODManager.js';
 import { IslandLabels } from './points/IslandLabels.js';
 import { DiveMode } from './DiveMode.js';
 import { Sidebar } from './ui/Sidebar.js';
 import { Minimap } from './ui/Minimap.js';
+import { VoyageLog } from './ui/VoyageLog.js';
+import { Theme } from './ui/Theme.js';
 
 const DIVE_THRESHOLD = 150;
 
@@ -79,18 +81,28 @@ function initSettings() {
 }
 
 async function main() {
+  // Theme
+  const theme = new Theme();
+  theme.applyInitial();
+
   const app = new Application();
   await app.init({
     resizeTo: window,
-    backgroundColor: 0x0a1628,
+    backgroundColor: theme.palette.appBg,
     antialias: true,
   });
   document.getElementById('canvas-container').appendChild(app.canvas);
 
   initSettings();
 
+  // Theme toggle button
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.textContent = theme.isLight ? 'Dark Mode' : 'Light Mode';
+  }
+
   // Ocean background — screen-space, not affected by camera
-  const ocean = new OceanRenderer(app.screen.width, app.screen.height);
+  const ocean = new OceanRenderer(app.screen.width, app.screen.height, theme);
   app.stage.addChild(ocean.container);
 
   // World container — everything that moves with the camera
@@ -101,8 +113,8 @@ async function main() {
   const camera = new Camera(app.screen.width, app.screen.height);
 
   // Ship
-  const ship = new Ship();
-  const shipGfx = ship.getGraphics();
+  const ship = new Ship(theme);
+  let shipGfx = ship.getGraphics();
 
   // Ship controls
   const controls = new ShipControls();
@@ -122,6 +134,7 @@ async function main() {
   let minimap = null;
   let diveMode = null;
   let lastNearby = [];
+  const voyageLog = new VoyageLog();
 
   try {
     const data = await loadData();
@@ -138,7 +151,7 @@ async function main() {
     }
 
     // Point cloud (build first so we can use its topic color map)
-    pointCloud = new PointCloud(worldContainer, ideas);
+    pointCloud = new PointCloud(worldContainer, ideas, voyageLog, theme);
 
     // Island labels — added BEFORE dots in z-order
     // We insert the label container behind the dot layer
@@ -155,7 +168,7 @@ async function main() {
     diveMode = new DiveMode();
 
     // Sidebar
-    sidebar = new Sidebar(document.getElementById('sidebar'));
+    sidebar = new Sidebar(document.getElementById('sidebar'), voyageLog);
 
     sidebar.setIdeas(ideas);
 
@@ -205,12 +218,56 @@ async function main() {
     minimap = new Minimap(
       document.getElementById('minimap-canvas'),
       ideas,
+      voyageLog,
+      theme,
     );
     minimap.init();
+
+    // Voyage log
+    voyageLog.setIdeas(ideas);
+    voyageLog.initPanel();
+    voyageLog.onNavigate((idea) => {
+      ship.x = idea.x;
+      ship.y = idea.y;
+      ship.vx = 0;
+      ship.vy = 0;
+      // Auto-dive into the idea
+      const post = posts[idea.post_id];
+      if (post && diveMode) {
+        diveMode.enter(idea);
+        const siblings = ideas.filter(i => i.post_id === idea.post_id);
+        sidebar.show(idea, post, siblings);
+      }
+    });
   } catch (e) {
     console.warn('Data not loaded (run npm run pipeline first):', e.message);
     worldContainer.addChild(shipGfx);
   }
+
+  // ── Theme toggle wiring ─────────────────────────────────────────────
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      theme.toggle();
+      themeToggle.textContent = theme.isLight ? 'Dark Mode' : 'Light Mode';
+    });
+  }
+
+  theme.onChange((palette) => {
+    // Pixi app background
+    app.renderer.background.color = palette.appBg;
+
+    // Ocean
+    ocean.onThemeChange();
+
+    // PointCloud
+    if (pointCloud) pointCloud.rebuildForTheme();
+
+    // Minimap — rebuild background canvas
+    if (minimap) minimap.init();
+
+    // Ship
+    shipGfx = ship.rebuildGraphics();
+  });
 
   // Handle resize
   window.addEventListener('resize', () => {
@@ -274,7 +331,16 @@ async function main() {
         camera.setTargetZoom(settings.diveZoom);
       } else {
         // 1. Compute proximity-based target zoom
-        const nearestDist = lastNearby.length > 0 ? lastNearby[0].distance : Infinity;
+        //    Filter out visited-and-dimmed nodes — they shouldn't pull the camera in
+        let nearestDist = Infinity;
+        for (const entry of lastNearby) {
+          const isVisitedDimmed = voyageLog.getVisited(entry.idea.id) && entry.distance > VISITED_FAR;
+          if (!isVisitedDimmed) {
+            nearestDist = entry.distance;
+            break;
+          }
+        }
+
         const clamped = Math.max(settings.closeThreshold, Math.min(settings.farThreshold, nearestDist));
         const rawT = 1 - (clamped - settings.closeThreshold) / (settings.farThreshold - settings.closeThreshold);
         const t = rawT * rawT;

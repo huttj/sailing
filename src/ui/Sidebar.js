@@ -37,17 +37,20 @@ function iconSpan(kind, cls = 'chip-icon') {
 }
 
 export class Sidebar {
-  constructor(element) {
+  constructor(element, voyageLog) {
     this.element = element;
     this._navigateCallback = null;
     this._highlightMinimapCallback = null;
     this._currentIdea = null;
     this._currentPost = null;
     this._allIdeas = [];
+    this._voyageLog = voyageLog;
+    this._moreExpanded = false;
 
     this.closeBtn = document.getElementById('sidebar-close');
     this.resizeHandle = document.getElementById('sidebar-resize-handle');
     this.titleEl = document.getElementById('sidebar-title');
+    this.voyageActionsEl = document.getElementById('sidebar-voyage-actions');
     this.nodeCardEl = document.getElementById('sidebar-node-card');
     this.bodyEl = document.getElementById('sidebar-body');
 
@@ -106,6 +109,9 @@ export class Sidebar {
     this._currentIdea = idea;
     this._currentPost = post;
 
+    // Track visit
+    if (this._voyageLog) this._voyageLog.recordVisit(idea);
+
     // Title
     if (this.titleEl) {
       this.titleEl.textContent = post ? post.title : '';
@@ -132,6 +138,9 @@ export class Sidebar {
   updateHighlight(idea) {
     this._currentIdea = idea;
 
+    // Track visit on proximity switch
+    if (this._voyageLog) this._voyageLog.recordVisit(idea);
+
     // Update node card
     const post = this._currentPost;
     const siblings = this._allIdeas.filter(i => i.post_id === idea.post_id);
@@ -146,6 +155,7 @@ export class Sidebar {
 
   hide() {
     this.element.classList.add('sidebar-hidden');
+    if (this.voyageActionsEl) this.voyageActionsEl.innerHTML = '';
     this._currentIdea = null;
     this._currentPost = null;
   }
@@ -214,14 +224,77 @@ export class Sidebar {
       chipsHtml += '</div>';
     }
 
+    // Voyage: star + visit in header, comments in card
+    let voyageCommentsHtml = '';
+    if (this._voyageLog) {
+      const starred = this._voyageLog.isStarred(idea.id);
+      const visit = this._voyageLog.getVisited(idea.id);
+      const comments = this._voyageLog.getComments(idea.id);
+
+      const starIcon = starred ? '\u2605' : '\u2606';
+      const starClass = starred ? ' voyage-star-active' : '';
+      const visitBadge = visit && visit.count > 1
+        ? `<span class="voyage-visited-badge">Visited ${visit.count}x</span>`
+        : '';
+
+      // Render star + visit into the header
+      if (this.voyageActionsEl) {
+        this.voyageActionsEl.innerHTML = `
+          ${visitBadge}
+          <button class="voyage-star-btn${starClass}" data-idea-id="${idea.id}">${starIcon}</button>
+        `;
+        const starBtn = this.voyageActionsEl.querySelector('.voyage-star-btn');
+        if (starBtn) {
+          starBtn.addEventListener('click', () => {
+            const nowStarred = this._voyageLog.toggleStar(idea.id);
+            starBtn.textContent = nowStarred ? '\u2605' : '\u2606';
+            starBtn.classList.toggle('voyage-star-active', nowStarred);
+          });
+        }
+      }
+
+      let commentsList = '';
+      if (comments.length > 0) {
+        commentsList = '<div class="voyage-comments-list">';
+        for (const c of comments) {
+          commentsList += `<div class="voyage-comment">${this._escapeHtml(c.text)}</div>`;
+        }
+        commentsList += '</div>';
+      }
+
+      voyageCommentsHtml = commentsList;
+    }
+
+    const hasMore = connectionsHtml || chipsHtml;
+    const hiddenClass = this._moreExpanded ? '' : ' node-more-hidden';
+    const openClass = this._moreExpanded ? ' node-more-toggle-open' : '';
+    const moreSection = hasMore ? `
+      <button class="node-more-toggle${openClass}">Connections &amp; related</button>
+      <div class="node-more-content${hiddenClass}">
+        ${connectionsHtml}
+        ${chipsHtml}
+      </div>
+    ` : '';
+
     this.nodeCardEl.innerHTML = `
       <div class="node-kind">${iconSpan(idea.kind, 'kind-icon')} ${kindLabel}</div>
       <div class="node-label">${idea.label}</div>
       <div class="node-synthesis">${idea.synthesis || ''}</div>
       <blockquote class="node-quote">${idea.quote}</blockquote>
-      ${connectionsHtml}
-      ${chipsHtml}
+      ${voyageCommentsHtml}
+      ${moreSection}
     `;
+
+    // Wire up "show more" toggle
+    const moreToggle = this.nodeCardEl.querySelector('.node-more-toggle');
+    const moreContent = this.nodeCardEl.querySelector('.node-more-content');
+    if (moreToggle && moreContent) {
+      moreToggle.addEventListener('click', () => {
+        const hidden = moreContent.classList.toggle('node-more-hidden');
+        moreToggle.classList.toggle('node-more-toggle-open', !hidden);
+        this._moreExpanded = !hidden;
+      });
+    }
 
     // Wire up connection clicks
     for (const btn of this.nodeCardEl.querySelectorAll('.node-connection')) {
@@ -264,6 +337,42 @@ export class Sidebar {
         if (this._highlightMinimapCallback) this._highlightMinimapCallback(null);
       });
     }
+
+    // Wire voyage comment add
+    const commentAdd = this.nodeCardEl.querySelector('.voyage-comment-add');
+    const commentArea = this.nodeCardEl.querySelector('.voyage-comment-textarea');
+    if (commentAdd && commentArea && this._voyageLog) {
+      const submitComment = () => {
+        const text = commentArea.value;
+        if (text && text.trim()) {
+          this._voyageLog.addComment(idea.id, text);
+          commentArea.value = '';
+          // Re-render to show new comment
+          this._renderNodeCard(idea, siblingIdeas);
+        }
+      };
+      commentAdd.addEventListener('click', submitComment);
+      // Capture keys so they don't control the ship
+      commentArea.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          submitComment();
+        }
+      });
+      commentArea.addEventListener('keyup', (e) => e.stopPropagation());
+      // Auto-expand textarea
+      commentArea.addEventListener('input', () => {
+        commentArea.style.height = 'auto';
+        commentArea.style.height = commentArea.scrollHeight + 'px';
+      });
+    }
+  }
+
+  _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   // ── Quote Highlighting ───────────────────────────────────────────────

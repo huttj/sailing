@@ -47,18 +47,13 @@ const ICON_THRESHOLD = 300;      // world units — switch to icon below this
 const ICON_BAND = 30;            // transition band width (snap, not gradual)
 const ICON_LERP = 0.15;          // animation speed per frame
 
-const LABEL_STYLE = new TextStyle({
-  fontFamily: 'Inter, system-ui, sans-serif',
-  fontSize: 13,
-  fill: 0xe0e8f0,
-  wordWrap: true,
-  wordWrapWidth: 180,
-  lineHeight: 16,
-});
+export const VISITED_FAR = 100;
 
 export class PointCloud {
-  constructor(container, ideas) {
+  constructor(container, ideas, voyageLog, theme) {
     this.ideas = ideas;
+    this._voyageLog = voyageLog || null;
+    this._theme = theme || null;
 
     // Build a topic-index map for stable colour assignment
     this.topicIndexMap = new Map();
@@ -79,10 +74,39 @@ export class PointCloud {
     container.addChild(this.iconLayer);
     container.addChild(this.labelLayer);
 
-    for (const idea of ideas) {
+    this._buildVisuals(container);
+  }
+
+  _getSaturation() {
+    return this._theme ? this._theme.palette.dotSaturation : 0.65;
+  }
+
+  _getLightness() {
+    return this._theme ? this._theme.palette.dotLightness : 0.55;
+  }
+
+  _getLabelFill() {
+    return this._theme ? this._theme.palette.labelFill : 0xe0e8f0;
+  }
+
+  _buildVisuals() {
+    const sat = this._getSaturation();
+    const lit = this._getLightness();
+    const labelFill = this._getLabelFill();
+
+    const labelStyle = new TextStyle({
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: 13,
+      fill: labelFill,
+      wordWrap: true,
+      wordWrapWidth: 180,
+      lineHeight: 16,
+    });
+
+    for (const idea of this.ideas) {
       const topicIdx = this.topicIndexMap.get(idea.topic);
       const hue = (topicIdx * GOLDEN_RATIO) % 1;
-      const color = hslToHex(hue, 0.65, 0.55);
+      const color = hslToHex(hue, sat, lit);
 
       // Dot (always visible)
       const dot = new Graphics();
@@ -117,7 +141,7 @@ export class PointCloud {
     // Reusable label pool
     this.labelPool = [];
     for (let i = 0; i < LABEL_POOL_SIZE; i++) {
-      const label = new Text({ text: '', style: LABEL_STYLE, resolution: 4 });
+      const label = new Text({ text: '', style: labelStyle, resolution: 4 });
       label.visible = false;
       label.anchor.set(0, 0.5);
       this.labelLayer.addChild(label);
@@ -125,10 +149,40 @@ export class PointCloud {
     }
   }
 
+  /** Rebuild all visuals with current theme colors. */
+  rebuildForTheme() {
+    const sat = this._getSaturation();
+    const lit = this._getLightness();
+    const labelFill = this._getLabelFill();
+
+    for (let i = 0; i < this.ideas.length; i++) {
+      const idea = this.ideas[i];
+      const topicIdx = this.topicIndexMap.get(idea.topic);
+      const hue = (topicIdx * GOLDEN_RATIO) % 1;
+      const color = hslToHex(hue, sat, lit);
+
+      // Redraw dot
+      const dot = this.dots[i];
+      dot.clear();
+      dot.circle(0, 0, 5);
+      dot.fill({ color });
+      dot._baseColor = color;
+
+      // Update icon color
+      const icon = this.icons[i];
+      icon.style.fill = color;
+    }
+
+    // Update label colors
+    for (const label of this.labelPool) {
+      label.style.fill = labelFill;
+    }
+  }
+
   colorForTopic(topic) {
     const idx = this.topicIndexMap.get(topic) ?? 0;
     const hue = (idx * GOLDEN_RATIO) % 1;
-    return hslToHex(hue, 0.65, 0.55);
+    return hslToHex(hue, this._getSaturation(), this._getLightness());
   }
 
   /**
@@ -149,6 +203,7 @@ export class PointCloud {
 
     // Collect visible ideas sorted by distance to ship
     const visibleByDist = [];
+    const visitedDim = [];
 
     for (let i = 0; i < this.dots.length; i++) {
       const idea = this.ideas[i];
@@ -190,6 +245,21 @@ export class PointCloud {
         this.dots[i].visible = false;
       }
 
+      // Fade visited nodes unless right next to them
+      let dimFactor = 1.0;
+      if (this._voyageLog && this._voyageLog.getVisited(idea.id)) {
+        const VISITED_NEAR = 50;
+        const DIM_ALPHA = 0.01;
+        if (dist > VISITED_FAR) {
+          dimFactor = DIM_ALPHA;
+        } else if (dist > VISITED_NEAR) {
+          dimFactor = 1.0 - ((dist - VISITED_NEAR) / (VISITED_FAR - VISITED_NEAR)) * (1.0 - DIM_ALPHA);
+        }
+        if (this.dots[i].visible) this.dots[i].alpha *= dimFactor;
+        if (this.icons[i].visible) this.icons[i].alpha *= dimFactor;
+      }
+      visitedDim[i] = dimFactor;
+
       visibleByDist.push({ index: i, distSq, dist, wx, wy });
     }
 
@@ -213,7 +283,7 @@ export class PointCloud {
         label.text = labelText;
         label.x = entry.wx + 12;
         label.y = entry.wy;
-        label.alpha = Math.max(0.3, 1 - entry.dist / 800);
+        label.alpha = Math.max(0.3, 1 - entry.dist / 800) * (visitedDim[entry.index] ?? 1.0);
 
         const w = label.width;
         const h = label.height;

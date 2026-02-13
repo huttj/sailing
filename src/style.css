@@ -1,3 +1,176 @@
+/* ── Theme Tokens ─────────────────────────────────────────────────────── */
+:root {
+  /* Page */
+  --page-bg: #0a1628;
+  --page-text: #e0e8f0;
+
+  /* Panel backgrounds (sidebar, settings, voyage, minimap) */
+  --panel-bg: rgba(10, 22, 40, 0.92);
+  --panel-bg-opaque: rgba(10, 22, 40, 0.95);
+  --panel-bg-medium: rgba(10, 22, 40, 0.8);
+  --panel-bg-light: rgba(10, 22, 40, 0.7);
+  --panel-bg-faint: rgba(10, 22, 40, 0.6);
+
+  /* Body / input areas */
+  --body-bg: rgba(20, 36, 60, 0.7);
+  --input-bg: rgba(20, 40, 70, 0.5);
+  --hover-bg: rgba(20, 40, 70, 0.9);
+
+  /* Interactive elements (chips, connections, tabs, entries) */
+  --interactive-bg: rgba(30, 55, 90, 0.35);
+  --interactive-bg-dim: rgba(30, 55, 90, 0.25);
+  --interactive-bg-strong: rgba(30, 60, 100, 0.4);
+  --interactive-hover: rgba(40, 75, 120, 0.45);
+  --interactive-hover-strong: rgba(40, 80, 140, 0.5);
+
+  /* Accent backgrounds */
+  --accent-bg: rgba(60, 140, 220, 0.2);
+  --accent-bg-hover: rgba(60, 140, 220, 0.4);
+  --accent-bg-active: rgba(60, 140, 220, 0.3);
+  --accent-bg-dim: rgba(60, 140, 220, 0.15);
+
+  /* Borders */
+  --border: rgba(100, 160, 220, 0.2);
+  --border-medium: rgba(100, 160, 220, 0.25);
+  --border-dim: rgba(100, 160, 220, 0.15);
+  --border-faint: rgba(100, 160, 220, 0.12);
+  --border-subtle: rgba(100, 160, 220, 0.1);
+  --border-strong: rgba(100, 160, 220, 0.3);
+  --border-bright: rgba(100, 160, 220, 0.4);
+  --border-vivid: rgba(100, 160, 220, 0.5);
+  --border-focus: rgba(100, 160, 220, 0.45);
+  --accent-border: rgba(60, 140, 220, 0.6);
+
+  /* Text hierarchy */
+  --heading: #e0eaf4;
+  --title: #c8ddf0;
+  --body-text: #c8d8e8;
+  --subheading: #d0e0f0;
+  --accent: #8cc4f0;
+  --accent-link: #6cb4f0;
+  --text-secondary: rgba(180, 210, 240, 0.85);
+  --text-chip: rgba(180, 210, 240, 0.8);
+  --text-body-dim: rgba(180, 205, 230, 0.75);
+  --text-blockquote: rgba(180, 200, 220, 0.8);
+  --text-hover: rgba(180, 210, 240, 0.9);
+  --text-muted: rgba(140, 180, 220, 0.7);
+  --text-kind: rgba(140, 180, 220, 0.6);
+  --text-tab: rgba(140, 180, 220, 0.55);
+  --text-dim: rgba(140, 180, 220, 0.5);
+  --text-faint: rgba(140, 180, 220, 0.45);
+  --text-subtle: rgba(140, 180, 220, 0.4);
+  --text-ghost: rgba(140, 180, 220, 0.35);
+  --quote-text: rgba(160, 190, 220, 0.6);
+  --entry-label: rgba(200, 220, 240, 0.85);
+  --comment-text: rgba(180, 210, 240, 0.7);
+
+  /* Highlight */
+  --highlight-bg: rgba(60, 140, 220, 0.3);
+  --highlight-text: #e8f0f8;
+  --highlight-shadow: rgba(60, 140, 220, 0.15);
+  --highlight-underline: rgba(100, 180, 255, 0.5);
+
+  /* Slider */
+  --slider-track: rgba(60, 100, 160, 0.3);
+  --slider-thumb: #6cb4f0;
+
+  /* Star */
+  --star-inactive: rgba(180, 200, 220, 0.35);
+  --star-active: #f0c040;
+
+  /* Danger */
+  --danger-bg: rgba(220, 80, 80, 0.1);
+  --danger-border: rgba(220, 100, 100, 0.2);
+  --danger-text: rgba(220, 130, 130, 0.7);
+  --danger-hover-bg: rgba(220, 80, 80, 0.2);
+  --danger-hover-text: rgba(240, 140, 140, 0.9);
+
+  /* Scrollbar */
+  --scrollbar: rgba(100, 160, 220, 0.2);
+  --scrollbar-hover: rgba(100, 160, 220, 0.4);
+}
+
+/* ── Light Mode ──────────────────────────────────────────────────────── */
+.light-mode {
+  --page-bg: #e8e0d4;
+  --page-text: #2a2420;
+
+  --panel-bg: rgba(240, 235, 228, 0.95);
+  --panel-bg-opaque: rgba(240, 235, 228, 0.98);
+  --panel-bg-medium: rgba(240, 235, 228, 0.9);
+  --panel-bg-light: rgba(240, 235, 228, 0.85);
+  --panel-bg-faint: rgba(240, 235, 228, 0.75);
+
+  --body-bg: rgba(235, 228, 218, 0.85);
+  --input-bg: rgba(225, 218, 205, 0.7);
+  --hover-bg: rgba(230, 222, 210, 0.95);
+
+  --interactive-bg: rgba(180, 170, 155, 0.25);
+  --interactive-bg-dim: rgba(180, 170, 155, 0.15);
+  --interactive-bg-strong: rgba(170, 160, 140, 0.3);
+  --interactive-hover: rgba(170, 155, 135, 0.35);
+  --interactive-hover-strong: rgba(160, 145, 125, 0.4);
+
+  --accent-bg: rgba(70, 120, 170, 0.15);
+  --accent-bg-hover: rgba(70, 120, 170, 0.25);
+  --accent-bg-active: rgba(70, 120, 170, 0.2);
+  --accent-bg-dim: rgba(70, 120, 170, 0.1);
+
+  --border: rgba(120, 100, 75, 0.2);
+  --border-medium: rgba(120, 100, 75, 0.25);
+  --border-dim: rgba(120, 100, 75, 0.15);
+  --border-faint: rgba(120, 100, 75, 0.12);
+  --border-subtle: rgba(120, 100, 75, 0.1);
+  --border-strong: rgba(120, 100, 75, 0.3);
+  --border-bright: rgba(120, 100, 75, 0.35);
+  --border-vivid: rgba(120, 100, 75, 0.45);
+  --border-focus: rgba(70, 120, 170, 0.4);
+  --accent-border: rgba(70, 120, 170, 0.5);
+
+  --heading: #2a2420;
+  --title: #3a3430;
+  --body-text: #3e3830;
+  --subheading: #3a3430;
+  --accent: #3a7ab0;
+  --accent-link: #2a6a9a;
+  --text-secondary: rgba(50, 40, 30, 0.75);
+  --text-chip: rgba(50, 40, 30, 0.7);
+  --text-body-dim: rgba(60, 50, 40, 0.7);
+  --text-blockquote: rgba(60, 50, 40, 0.65);
+  --text-hover: rgba(40, 30, 20, 0.85);
+  --text-muted: rgba(60, 50, 35, 0.6);
+  --text-kind: rgba(60, 50, 35, 0.55);
+  --text-tab: rgba(60, 50, 35, 0.5);
+  --text-dim: rgba(60, 50, 35, 0.5);
+  --text-faint: rgba(60, 50, 35, 0.4);
+  --text-subtle: rgba(60, 50, 35, 0.35);
+  --text-ghost: rgba(60, 50, 35, 0.3);
+  --quote-text: rgba(70, 60, 45, 0.55);
+  --entry-label: rgba(40, 30, 20, 0.8);
+  --comment-text: rgba(50, 40, 30, 0.65);
+
+  --highlight-bg: rgba(70, 140, 200, 0.2);
+  --highlight-text: #2a2420;
+  --highlight-shadow: rgba(70, 140, 200, 0.1);
+  --highlight-underline: rgba(70, 140, 200, 0.4);
+
+  --slider-track: rgba(120, 100, 75, 0.25);
+  --slider-thumb: #3a7ab0;
+
+  --star-inactive: rgba(80, 70, 55, 0.3);
+  --star-active: #d0a020;
+
+  --danger-bg: rgba(200, 70, 70, 0.08);
+  --danger-border: rgba(200, 80, 80, 0.2);
+  --danger-text: rgba(180, 60, 60, 0.6);
+  --danger-hover-bg: rgba(200, 70, 70, 0.15);
+  --danger-hover-text: rgba(180, 50, 50, 0.8);
+
+  --scrollbar: rgba(120, 100, 75, 0.2);
+  --scrollbar-hover: rgba(120, 100, 75, 0.35);
+}
+
+/* ── Base Reset ──────────────────────────────────────────────────────── */
 * {
   margin: 0;
   padding: 0;
@@ -8,9 +181,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0a1628;
+  background: var(--page-bg);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #e0e8f0;
+  color: var(--page-text);
 }
 
 #canvas-container {
@@ -30,11 +203,11 @@ html, body {
   position: fixed;
   top: 0;
   right: 0;
-  width: 480px;
+  width: min(720px, 40%);
   height: 100%;
-  background: rgba(10, 22, 40, 0.92);
+  background: var(--panel-bg);
   backdrop-filter: blur(12px);
-  border-left: 1px solid rgba(100, 160, 220, 0.2);
+  border-left: 1px solid var(--border);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -66,12 +239,12 @@ html, body {
   width: 4px;
   height: 40px;
   border-radius: 2px;
-  background: rgba(100, 160, 220, 0.2);
+  background: var(--border);
   transition: background 0.2s;
 }
 
 #sidebar-resize-handle:hover::after {
-  background: rgba(100, 160, 220, 0.5);
+  background: var(--border-vivid);
 }
 
 #sidebar-header {
@@ -79,7 +252,7 @@ html, body {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(100, 160, 220, 0.15);
+  border-bottom: 1px solid var(--border-dim);
   flex-shrink: 0;
 }
 
@@ -87,9 +260,9 @@ html, body {
   width: 28px;
   height: 28px;
   border: none;
-  background: rgba(60, 140, 220, 0.2);
+  background: var(--accent-bg);
   border-radius: 6px;
-  color: #8cc4f0;
+  color: var(--accent);
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -100,23 +273,30 @@ html, body {
 }
 
 #sidebar-close:hover {
-  background: rgba(60, 140, 220, 0.4);
+  background: var(--accent-bg-hover);
 }
 
 #sidebar-title {
   font-size: 14px;
   font-weight: 600;
-  color: #c8ddf0;
+  color: var(--title);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
 }
 
+#sidebar-voyage-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 /* ── Node Card ───────────────────────────────────────────────────────── */
 #sidebar-node-card {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(100, 160, 220, 0.12);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-faint);
   flex-shrink: 0;
 }
 
@@ -125,8 +305,8 @@ html, body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(140, 180, 220, 0.6);
-  margin-bottom: 6px;
+  color: var(--text-kind);
+  margin-bottom: 3px;
 }
 
 .kind-icon {
@@ -136,44 +316,84 @@ html, body {
 .node-label {
   font-size: 17px;
   font-weight: 600;
-  line-height: 1.35;
-  color: #e0eaf4;
-  margin-bottom: 10px;
+  line-height: 1.3;
+  color: var(--heading);
+  margin-bottom: 6px;
 }
 
 .node-synthesis {
   font-size: 15px;
-  line-height: 1.6;
-  color: rgba(180, 205, 230, 0.75);
-  margin-bottom: 10px;
+  line-height: 1.55;
+  color: var(--text-body-dim);
+  margin-bottom: 6px;
 }
 
 .node-quote {
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: rgba(160, 190, 220, 0.6);
-  border-left: 2px solid rgba(100, 160, 220, 0.3);
-  padding-left: 12px;
-  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--quote-text);
+  border-left: 2px solid var(--border-strong);
+  padding-left: 10px;
+  margin: 0 0 8px;
   font-style: italic;
+}
+
+/* ── Show More Toggle ────────────────────────────────────────────────── */
+.node-more-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 0 0;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.2s;
+}
+
+.node-more-toggle::before {
+  content: '\25B8\2002';
+}
+
+.node-more-toggle-open::before {
+  content: '\25BE\2002';
+}
+
+.node-more-toggle:hover {
+  color: var(--text-chip);
+}
+
+.node-more-content {
+  padding-top: 10px;
+  padding-bottom: 4px;
+}
+
+.node-more-hidden {
+  display: none;
 }
 
 /* ── Connections ─────────────────────────────────────────────────────── */
 .node-connections {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
 }
 
 .node-connection {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 12px;
-  background: rgba(30, 55, 90, 0.35);
-  border: 1px solid rgba(100, 160, 220, 0.15);
-  border-radius: 8px;
+  flex: 1 1 45%;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--interactive-bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
   text-align: left;
@@ -181,8 +401,8 @@ html, body {
 }
 
 .node-connection:hover {
-  background: rgba(40, 75, 120, 0.45);
-  border-color: rgba(100, 160, 220, 0.35);
+  background: var(--interactive-hover);
+  border-color: var(--border-strong);
 }
 
 .connection-type {
@@ -190,13 +410,16 @@ html, body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: rgba(140, 180, 220, 0.5);
+  color: var(--text-dim);
 }
 
 .connection-label {
-  font-size: 13px;
-  color: rgba(180, 210, 240, 0.85);
+  font-size: 14px;
+  color: var(--text-secondary);
   line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Icon in buttons ────────────────────────────────────────────────── */
@@ -209,7 +432,8 @@ html, body {
 .node-siblings {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  margin-top: 10px;
 }
 
 .node-siblings-label {
@@ -218,35 +442,35 @@ html, body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: rgba(140, 180, 220, 0.45);
-  margin-bottom: 2px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
 }
 
 .idea-chip {
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 5px 12px;
+  font-size: 13px;
   font-weight: 500;
-  background: rgba(30, 60, 100, 0.4);
-  border: 1px solid rgba(100, 160, 220, 0.2);
-  border-radius: 12px;
-  color: rgba(180, 210, 240, 0.8);
+  background: var(--interactive-bg-strong);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-chip);
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
   white-space: nowrap;
-  max-width: 220px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .idea-chip:hover {
-  background: rgba(40, 80, 140, 0.5);
-  border-color: rgba(100, 160, 220, 0.4);
+  background: var(--interactive-hover-strong);
+  border-color: var(--border-bright);
 }
 
 .idea-chip-active {
-  background: rgba(60, 140, 220, 0.3);
-  border-color: rgba(60, 140, 220, 0.6);
-  color: #8cc4f0;
+  background: var(--accent-bg-active);
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 
 /* ── Sidebar Body (Article) ──────────────────────────────────────────── */
@@ -257,7 +481,8 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.75;
-  color: #c8d8e8;
+  color: var(--body-text);
+  background: var(--body-bg);
 }
 
 #sidebar-body p {
@@ -267,20 +492,20 @@ html, body {
 #sidebar-body h2 {
   font-size: 18px;
   margin: 1.4em 0 0.5em;
-  color: #e0eaf4;
+  color: var(--heading);
 }
 
 #sidebar-body h3 {
   font-size: 16px;
   margin: 1.2em 0 0.4em;
-  color: #d0e0f0;
+  color: var(--subheading);
 }
 
 #sidebar-body blockquote {
-  border-left: 3px solid rgba(100, 160, 220, 0.4);
+  border-left: 3px solid var(--border-bright);
   padding-left: 14px;
   margin: 0.8em 0;
-  color: rgba(180, 200, 220, 0.8);
+  color: var(--text-blockquote);
   font-style: italic;
 }
 
@@ -294,7 +519,7 @@ html, body {
 }
 
 #sidebar-body a {
-  color: #6cb4f0;
+  color: var(--accent-link);
   text-decoration: none;
 }
 
@@ -313,12 +538,12 @@ html, body {
 
 /* ── Quote Highlight ─────────────────────────────────────────────────── */
 mark.current-quote {
-  background: rgba(60, 140, 220, 0.3);
-  color: #e8f0f8;
+  background: var(--highlight-bg);
+  color: var(--highlight-text);
   padding: 2px 1px;
   border-radius: 2px;
-  box-shadow: 0 0 0 3px rgba(60, 140, 220, 0.15);
-  border-bottom: 2px solid rgba(100, 180, 255, 0.5);
+  box-shadow: 0 0 0 3px var(--highlight-shadow);
+  border-bottom: 2px solid var(--highlight-underline);
 }
 
 /* ── Settings Panel ──────────────────────────────────────────────────── */
@@ -333,27 +558,27 @@ mark.current-quote {
   padding: 6px 14px;
   font-size: 11px;
   font-weight: 600;
-  background: rgba(10, 22, 40, 0.8);
+  background: var(--panel-bg-medium);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(100, 160, 220, 0.25);
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
-  color: rgba(140, 180, 220, 0.7);
+  color: var(--text-muted);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 #settings-toggle:hover {
-  background: rgba(20, 40, 70, 0.9);
-  color: rgba(180, 210, 240, 0.9);
+  background: var(--hover-bg);
+  color: var(--text-hover);
 }
 
 #settings-content {
   display: none;
   margin-top: 8px;
   padding: 12px 14px;
-  background: rgba(10, 22, 40, 0.92);
+  background: var(--panel-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(100, 160, 220, 0.2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   min-width: 260px;
 }
@@ -369,7 +594,7 @@ mark.current-quote {
 .settings-row label {
   display: block;
   font-size: 11px;
-  color: rgba(140, 180, 220, 0.7);
+  color: var(--text-muted);
   margin-bottom: 3px;
 }
 
@@ -378,7 +603,7 @@ mark.current-quote {
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(60, 100, 160, 0.3);
+  background: var(--slider-track);
   border-radius: 2px;
   outline: none;
 }
@@ -389,14 +614,14 @@ mark.current-quote {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #6cb4f0;
+  background: var(--slider-thumb);
   cursor: pointer;
   border: none;
 }
 
 .settings-value {
   font-size: 10px;
-  color: rgba(140, 180, 220, 0.5);
+  color: var(--text-dim);
   float: right;
   margin-top: -14px;
 }
@@ -410,10 +635,15 @@ mark.current-quote {
   height: 200px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(100, 160, 220, 0.3);
-  background: rgba(10, 22, 40, 0.7);
+  border: 1px solid var(--border-strong);
+  background: var(--panel-bg-light);
   backdrop-filter: blur(8px);
   z-index: 10;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#minimap.minimap-shifted {
+  left: 324px;
 }
 
 #minimap-canvas {
@@ -427,7 +657,7 @@ mark.current-quote {
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: 5;
   pointer-events: none;
 }
 
@@ -435,10 +665,10 @@ mark.current-quote {
   display: inline-block;
   padding: 6px 16px;
   font-size: 12px;
-  color: rgba(140, 180, 220, 0.5);
-  background: rgba(10, 22, 40, 0.6);
+  color: var(--text-dim);
+  background: var(--panel-bg-faint);
   border-radius: 20px;
-  border: 1px solid rgba(100, 160, 220, 0.15);
+  border: 1px solid var(--border-dim);
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────── */
@@ -451,10 +681,357 @@ mark.current-quote {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 160, 220, 0.2);
+  background: var(--scrollbar);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 160, 220, 0.4);
+  background: var(--scrollbar-hover);
+}
+
+/* ── Voyage: Star, Visit Badge, Comments (Sidebar) ──────────────────── */
+.voyage-star-btn {
+  background: none;
+  border: none;
+  color: var(--star-inactive);
+  font-size: 18px;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.voyage-star-btn:hover {
+  color: var(--star-active);
+}
+
+.voyage-star-btn.voyage-star-active {
+  color: var(--star-active);
+}
+
+.voyage-visited-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.voyage-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.voyage-comment {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--comment-text);
+  background: var(--interactive-bg-dim);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 2px solid var(--border);
+}
+
+.voyage-comment-input {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.voyage-comment-textarea {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--body-text);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 5px 8px;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  min-height: 28px;
+  max-height: 120px;
+  transition: border-color 0.2s;
+}
+
+.voyage-comment-textarea:focus {
+  border-color: var(--border-focus);
+}
+
+.voyage-comment-textarea::placeholder {
+  color: var(--text-ghost);
+}
+
+.voyage-comment-add {
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--accent-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: 5px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.voyage-comment-add:hover {
+  background: var(--accent-bg-hover);
+}
+
+/* ── Voyage Toggle Button ───────────────────────────────────────────── */
+#voyage-toggle {
+  position: fixed;
+  bottom: 224px;
+  left: 16px;
+  z-index: 11;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--panel-bg-medium);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#voyage-toggle.voyage-toggle-shifted {
+  left: 324px;
+}
+
+#voyage-toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-hover);
+}
+
+/* ── Voyage Panel ───────────────────────────────────────────────────── */
+#voyage-panel {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  width: 360px;
+  max-height: 400px;
+  z-index: 12;
+  background: var(--panel-bg-opaque);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#voyage-panel.voyage-panel-open {
+  display: flex;
+}
+
+.voyage-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-dim);
+  flex-shrink: 0;
+}
+
+.voyage-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--title);
+}
+
+.voyage-panel-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--accent-bg);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.voyage-panel-close:hover {
+  background: var(--accent-bg-hover);
+}
+
+.voyage-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.voyage-tab {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-tab);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  text-align: center;
+}
+
+.voyage-tab:hover {
+  background: var(--interactive-bg);
+  color: var(--text-chip);
+}
+
+.voyage-tab-active {
+  background: var(--accent-bg);
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
+
+.voyage-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.voyage-empty {
+  text-align: center;
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--text-subtle);
+  line-height: 1.5;
+}
+
+.voyage-entry {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: background 0.15s, border-color 0.15s;
+  margin-bottom: 2px;
+}
+
+.voyage-entry:hover {
+  background: var(--interactive-bg);
+  border-color: var(--border-dim);
+}
+
+.voyage-entry-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voyage-entry-kind {
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+
+.voyage-entry-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--entry-label);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voyage-entry-star {
+  color: var(--star-active);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.voyage-entry-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 3px;
+  padding-left: 22px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.voyage-footer {
+  padding: 10px;
+  border-top: 1px solid var(--border-faint);
+  flex-shrink: 0;
+}
+
+.voyage-footer-row {
+  display: flex;
+  gap: 6px;
+}
+
+.voyage-export {
+  flex: 1;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent-bg-dim);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.voyage-export:hover {
+  background: var(--accent-bg-active);
+}
+
+.voyage-clear {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 6px;
+  color: var(--danger-text);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.voyage-clear:hover {
+  background: var(--danger-hover-bg);
+  color: var(--danger-hover-text);
+}
+
+/* ── Theme Toggle Button ─────────────────────────────────────────────── */
+#theme-toggle {
+  position: fixed;
+  top: 16px;
+  left: 136px;
+  z-index: 15;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--panel-bg-medium);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+#theme-toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-hover);
 }

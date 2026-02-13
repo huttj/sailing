@@ -36,10 +36,12 @@ function hslToCSS(h, s, l) {
 }
 
 export class Minimap {
-  constructor(canvas, ideas) {
+  constructor(canvas, ideas, voyageLog, theme) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.ideas = ideas;
+    this._voyageLog = voyageLog || null;
+    this._theme = theme || null;
     this.bgCanvas = null;
     this._highlightIdea = null;
     this._pulseTime = 0;
@@ -58,13 +60,19 @@ export class Minimap {
   }
 
   init() {
+    const p = this._theme ? this._theme.palette : null;
+
     this.bgCanvas = document.createElement('canvas');
     this.bgCanvas.width = MAP_SIZE;
     this.bgCanvas.height = MAP_SIZE;
     const bgCtx = this.bgCanvas.getContext('2d');
 
-    bgCtx.fillStyle = '#0a0e17';
+    bgCtx.fillStyle = p ? p.minimapBg : '#0a0e17';
     bgCtx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
+
+    const sat = p ? p.dotSaturation : 0.65;
+    const lit = p ? p.dotLightness : 0.55;
+    const dotAlpha = p ? p.minimapDotAlpha : 0.7;
 
     for (const idea of this.ideas) {
       const mx = this._worldToMap(idea.x);
@@ -72,10 +80,10 @@ export class Minimap {
 
       const topicIdx = this.topicIndexMap.get(idea.topic) ?? 0;
       const hue = (topicIdx * GOLDEN_RATIO) % 1;
-      const color = hslToCSS(hue, 0.65, 0.55);
+      const color = hslToCSS(hue, sat, lit);
 
       bgCtx.fillStyle = color;
-      bgCtx.globalAlpha = 0.7;
+      bgCtx.globalAlpha = dotAlpha;
       bgCtx.beginPath();
       bgCtx.arc(mx, my, 1.5, 0, Math.PI * 2);
       bgCtx.fill();
@@ -103,10 +111,26 @@ export class Minimap {
    */
   update(shipX, shipY, viewport) {
     const ctx = this.ctx;
+    const p = this._theme ? this._theme.palette : null;
+
     ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
 
     if (this.bgCanvas) {
       ctx.drawImage(this.bgCanvas, 0, 0);
+    }
+
+    // Draw visited trail markers
+    if (this._voyageLog) {
+      ctx.fillStyle = p ? p.minimapVisitedFill : 'rgba(255, 255, 255, 0.45)';
+      for (const idea of this.ideas) {
+        if (this._voyageLog.getVisited(idea.id)) {
+          const mx = this._worldToMap(idea.x);
+          const my = this._worldToMap(idea.y);
+          ctx.beginPath();
+          ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Draw viewport rectangle
@@ -116,7 +140,7 @@ export class Minimap {
       const vw = ((viewport.right - viewport.left) / WORLD_RANGE) * MAP_SIZE;
       const vh = ((viewport.bottom - viewport.top) / WORLD_RANGE) * MAP_SIZE;
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.strokeStyle = p ? p.minimapViewportStroke : 'rgba(255, 255, 255, 0.5)';
       ctx.lineWidth = 1;
       ctx.strokeRect(vx, vy, vw, vh);
     }
@@ -140,13 +164,13 @@ export class Minimap {
     const sx = this._worldToMap(shipX);
     const sy = this._worldToMap(shipY);
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = p ? p.minimapShipFill : '#ffffff';
     ctx.globalAlpha = 1;
     ctx.beginPath();
     ctx.arc(sx, sy, 3, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+    ctx.strokeStyle = p ? p.minimapShipStroke : 'rgba(100, 200, 255, 0.8)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(sx, sy, 5, 0, Math.PI * 2);

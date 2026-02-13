@@ -7,9 +7,10 @@ import { WaterShader } from './WaterShader.js';
  * Uses Pixi v8 Graphics API.
  */
 export class OceanRenderer {
-  constructor(screenWidth, screenHeight) {
+  constructor(screenWidth, screenHeight, theme) {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
+    this._theme = theme;
 
     this.container = new Container();
 
@@ -19,14 +20,15 @@ export class OceanRenderer {
     this.container.addChild(this.base);
 
     // Animated wave overlay
-    this.waterShader = new WaterShader(screenWidth, screenHeight);
+    this.waterShader = new WaterShader(screenWidth, screenHeight, theme);
     this.container.addChild(this.waterShader.container);
   }
 
   _drawBase() {
+    const color = this._theme ? this._theme.palette.oceanBase : 0x071a2e;
     this.base.clear();
     this.base.rect(0, 0, this.screenWidth, this.screenHeight);
-    this.base.fill({ color: 0x071a2e });
+    this.base.fill({ color });
   }
 
   update(time, cameraX = 0, cameraY = 0) {
@@ -38,6 +40,11 @@ export class OceanRenderer {
     this.screenHeight = screenHeight;
     this._drawBase();
     this.waterShader.resize(screenWidth, screenHeight);
+  }
+
+  /** Redraw base when theme changes. */
+  onThemeChange() {
+    this._drawBase();
   }
 
   destroy() {
