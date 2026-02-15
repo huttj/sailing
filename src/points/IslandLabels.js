@@ -52,11 +52,12 @@ export class IslandLabels {
       const color = hslToHex(hue, 0.35, 0.45);
 
       const style = new TextStyle({
-        fontFamily: '"Homemade Apple", "Marker Felt", "Segoe Script", "Comic Sans MS", cursive',
+        fontFamily: '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif',
         fontSize: 90,
         fill: color,
         fontWeight: 'normal',
-        letterSpacing: 2,
+        fontStyle: 'italic',
+        letterSpacing: 3,
       });
 
       const label = new Text({ text: topic.name, style });

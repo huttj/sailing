@@ -71,6 +71,120 @@ function htmlToPlainText(html) {
     .trim();
 }
 
+// ── Quote snapping — guarantee verbatim quotes ──────────────────────
+function normalize(str) {
+  return str
+    .replace(/[\u2018\u2019\u201C\u201D]/g, c =>
+      c === '\u2018' || c === '\u2019' ? "'" : '"')
+    .replace(/\u2014/g, '--')
+    .replace(/\u2013/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/[.,;:!?"'()\[\]{}\-]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .trim();
+}
+
+function buildNormMap(text) {
+  // Map each character in the normalized string back to its index in the original
+  const normChars = [];
+  const origIndices = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    // Apply same transforms as normalize()
+    let mapped = ch;
+    if (ch === '\u2018' || ch === '\u2019') mapped = "'";
+    else if (ch === '\u201C' || ch === '\u201D') mapped = '"';
+    else if (ch === '\u2014') mapped = '--';
+    else if (ch === '\u2013') mapped = '-';
+    else if (ch === '\u2026') mapped = '...';
+
+    // Strip punctuation
+    mapped = mapped.replace(/[.,;:!?"'()\[\]{}\-]/g, '');
+
+    // Collapse whitespace
+    if (/\s/.test(ch)) {
+      if (normChars.length > 0 && normChars[normChars.length - 1] !== ' ') {
+        normChars.push(' ');
+        origIndices.push(i);
+      }
+      continue;
+    }
+
+    for (const c of mapped.toLowerCase()) {
+      normChars.push(c);
+      origIndices.push(i);
+    }
+  }
+  // Trim leading/trailing space
+  while (normChars.length > 0 && normChars[0] === ' ') {
+    normChars.shift();
+    origIndices.shift();
+  }
+  while (normChars.length > 0 && normChars[normChars.length - 1] === ' ') {
+    normChars.pop();
+    origIndices.pop();
+  }
+  return { normStr: normChars.join(''), origIndices };
+}
+
+function snapQuoteToSource(llmQuote, plainText) {
+  // Strategy 1: Exact case-insensitive match
+  const idx = plainText.toLowerCase().indexOf(llmQuote.toLowerCase());
+  if (idx !== -1) {
+    return plainText.slice(idx, idx + llmQuote.length);
+  }
+
+  // Strategy 2: Normalized match with index mapping
+  const { normStr: normText, origIndices } = buildNormMap(plainText);
+  const normQuote = normalize(llmQuote);
+  const normIdx = normText.indexOf(normQuote);
+  if (normIdx !== -1) {
+    const origStart = origIndices[normIdx];
+    const origEnd = origIndices[Math.min(normIdx + normQuote.length - 1, origIndices.length - 1)];
+    // Extend origEnd to include the full last character's surroundings
+    let end = origEnd + 1;
+    // Extend past any trailing punctuation/whitespace that was stripped
+    while (end < plainText.length && /[.,;:!?"'()\[\]{}\s\-]/.test(plainText[end])) {
+      // Only extend if the next real char would go past our match
+      if (end < plainText.length && /\s/.test(plainText[end]) && end > origEnd + 1) break;
+      end++;
+    }
+    return plainText.slice(origStart, end).trim();
+  }
+
+  // Strategy 3: Sliding window Jaccard word overlap
+  const quoteWords = llmQuote.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  if (quoteWords.length < 3) return null;
+
+  const quoteSet = new Set(quoteWords);
+  const textWords = plainText.split(/\s+/);
+  const windowSize = quoteWords.length;
+
+  let bestScore = 0;
+  let bestStart = -1;
+  let bestEnd = -1;
+
+  for (let i = 0; i <= textWords.length - windowSize; i++) {
+    const windowWords = textWords.slice(i, i + windowSize);
+    const windowSet = new Set(windowWords.map(w => w.toLowerCase()));
+    const intersection = [...quoteSet].filter(w => windowSet.has(w)).length;
+    const union = new Set([...quoteSet, ...windowSet]).size;
+    const jaccard = intersection / union;
+    if (jaccard > bestScore) {
+      bestScore = jaccard;
+      bestStart = i;
+      bestEnd = i + windowSize;
+    }
+  }
+
+  if (bestScore >= 0.4) {
+    return textWords.slice(bestStart, bestEnd).join(' ');
+  }
+
+  return null;
+}
+
 // ── Pass 2: Per-post Idea Extraction ─────────────────────────────────
 console.log(`\n--- Pass 2: Per-post Extraction (${postIds.length} posts, all parallel) ---`);
 
@@ -110,6 +224,7 @@ For each fragment, return:
   For turns: the pivot, e.g. "The moment I realized I was describing my father"
   Keep it under 15 words. Make it magnetic.
 - "synthesis": 2–3 sentences written as the author's own reflection — first person, intimate, like you're overhearing them think out loud. NOT a literary analysis or third-person summary. Don't say "the author" or "this piece explores." Instead, channel the author's voice: what they're sitting with, what they can't resolve, what they're noticing.
+  IMPORTANT: Use first person ONLY for the blog author's own thoughts and experiences. When the fragment is about someone else the author is describing (e.g. a person they interviewed, observed, or are profiling), use that person's name and third person. If the author writes about "Omar's split-brain experiment," the synthesis should say "Omar is running..." not "I'm running..."
   CRITICAL: Include enough concrete context that a reader who hasn't read the post understands what's being described. Name the SPECIFIC thing — don't hide behind vague abstractions like "compulsive workaround" or "transformative process." If the author is talking about how they try to control outcomes because good things ending terrifies them, SAY that. Ground every synthesis in the actual content.
 - "quote": a verbatim quote from the text (copy exact words, 10–80 words). Pick the most alive passage — where the author was cooking.
 
@@ -133,9 +248,8 @@ Return ONLY a JSON array. Example:
     return [];
   }
 
-  // Validate each idea
+  // Validate & snap quotes to source text
   const validated = [];
-  const plainLower = plainText.toLowerCase();
 
   for (let i = 0; i < ideas.length; i++) {
     const idea = ideas[i];
@@ -144,14 +258,13 @@ Return ONLY a JSON array. Example:
     // Validate kind
     if (!['question', 'tension', 'image', 'turn'].includes(idea.kind)) continue;
 
-    // Validate quote exists in post text (case-insensitive)
-    const quoteLower = idea.quote.toLowerCase();
-    if (plainLower.indexOf(quoteLower) === -1) {
-      const shortQuote = quoteLower.slice(0, 40);
-      if (shortQuote.length < 10 || plainLower.indexOf(shortQuote) === -1) {
-        continue;
-      }
+    // Snap quote to verbatim source text
+    const snapped = snapQuoteToSource(idea.quote, plainText);
+    if (!snapped) {
+      console.warn(`  Warning: Could not snap quote for ${postId}_${i}: "${idea.quote.slice(0, 50)}..."`);
+      continue;
     }
+    idea.quote = snapped;
 
     // Validate topic is in our list
     if (!topics.includes(idea.topic)) {

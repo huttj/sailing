@@ -54,6 +54,7 @@ export class PointCloud {
     this.ideas = ideas;
     this._voyageLog = voyageLog || null;
     this._theme = theme || null;
+    this.hideVisited = false;
 
     // Build a topic-index map for stable colour assignment
     this.topicIndexMap = new Map();
@@ -249,11 +250,11 @@ export class PointCloud {
       let dimFactor = 1.0;
       if (this._voyageLog && this._voyageLog.getVisited(idea.id)) {
         const VISITED_NEAR = 50;
-        const DIM_ALPHA = 0.01;
+        const baseDim = this.hideVisited ? 0.0 : 0.01;
         if (dist > VISITED_FAR) {
-          dimFactor = DIM_ALPHA;
+          dimFactor = baseDim;
         } else if (dist > VISITED_NEAR) {
-          dimFactor = 1.0 - ((dist - VISITED_NEAR) / (VISITED_FAR - VISITED_NEAR)) * (1.0 - DIM_ALPHA);
+          dimFactor = 1.0 - ((dist - VISITED_NEAR) / (VISITED_FAR - VISITED_NEAR)) * (1.0 - baseDim);
         }
         if (this.dots[i].visible) this.dots[i].alpha *= dimFactor;
         if (this.icons[i].visible) this.icons[i].alpha *= dimFactor;

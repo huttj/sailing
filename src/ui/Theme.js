@@ -18,8 +18,6 @@ const DARK = {
     { color: 0x0a3d5c, alpha: 0.35 },
     { color: 0x0e5a7e, alpha: 0.28 },
     { color: 0x1a7a8a, alpha: 0.22 },
-    { color: 0x2e9ba0, alpha: 0.18 },
-    { color: 0x146878, alpha: 0.25 },
   ],
   sparkleColor: 0xffffff,
 
@@ -55,8 +53,6 @@ const LIGHT = {
     { color: 0x8bbad0, alpha: 0.30 },
     { color: 0x9ecadb, alpha: 0.24 },
     { color: 0xa8d4d8, alpha: 0.20 },
-    { color: 0xb5dde0, alpha: 0.16 },
-    { color: 0x8ec8d0, alpha: 0.22 },
   ],
   sparkleColor: 0xffffff,
 

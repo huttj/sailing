@@ -7,7 +7,7 @@ const STORAGE_KEY = 'voyage';
 
 export class VoyageLog {
   constructor() {
-    this._data = { visited: {}, starred: {}, comments: {} };
+    this._data = { visited: {}, starred: {}, comments: {}, notes: {} };
     this._load();
     this._navigateCallback = null;
     this._panel = null;
@@ -59,13 +59,30 @@ export class VoyageLog {
     return this._data.comments[ideaId] || [];
   }
 
+  getNote(ideaId) {
+    return this._data.notes[ideaId] || '';
+  }
+
+  setNote(ideaId, text) {
+    if (text && text.trim()) {
+      this._data.notes[ideaId] = text;
+    } else {
+      delete this._data.notes[ideaId];
+    }
+    this._save();
+  }
+
+  hasNote(ideaId) {
+    return !!this._data.notes[ideaId];
+  }
+
   getVisited(ideaId) {
     return this._data.visited[ideaId] || null;
   }
 
   clearAll() {
     if (!confirm('Clear your entire voyage history? This cannot be undone.')) return;
-    this._data = { visited: {}, starred: {}, comments: {} };
+    this._data = { visited: {}, starred: {}, comments: {}, notes: {} };
     this._save();
     this._refreshPanel();
   }
@@ -78,6 +95,7 @@ export class VoyageLog {
         visited: visit,
         starred: !!this._data.starred[id],
         comments: this._data.comments[id] || [],
+        note: this._data.notes[id] || '',
       });
     }
     // Sort by most recently visited
@@ -98,7 +116,8 @@ export class VoyageLog {
     lines.push('');
 
     // Stats
-    lines.push(`**${entries.length}** places visited | **${starredEntries.length}** starred | **${commentedEntries.length}** with notes`);
+    const notedEntries = entries.filter(e => e.note);
+    lines.push(`**${entries.length}** places visited | **${starredEntries.length}** starred | **${notedEntries.length}** with notes`);
     lines.push('');
 
     // Starred
@@ -112,27 +131,26 @@ export class VoyageLog {
         if (!idea) continue;
         lines.push(`- **${idea.label}** _(${idea.kind})_`);
         if (idea.synthesis) lines.push(`  > ${idea.synthesis}`);
+        if (e.note) lines.push(`  - _Note:_ ${e.note}`);
         for (const c of e.comments) {
-          lines.push(`  - _Note:_ ${c.text}`);
+          lines.push(`  - _Comment:_ ${c.text}`);
         }
         lines.push('');
       }
     }
 
-    // Commented (non-starred)
-    const commentedOnly = commentedEntries.filter(e => !e.starred);
-    if (commentedOnly.length > 0) {
+    // Notes (non-starred entries that have notes)
+    const notedOnly = notedEntries.filter(e => !e.starred);
+    if (notedOnly.length > 0) {
       lines.push('---');
       lines.push('');
       lines.push('## Notes');
       lines.push('');
-      for (const e of commentedOnly) {
+      for (const e of notedOnly) {
         const idea = ideaMap.get(e.id);
         if (!idea) continue;
         lines.push(`- **${idea.label}** _(${idea.kind})_`);
-        for (const c of e.comments) {
-          lines.push(`  - ${c.text}`);
-        }
+        if (e.note) lines.push(`  - ${e.note}`);
         lines.push('');
       }
     }
@@ -149,8 +167,8 @@ export class VoyageLog {
       const idea = ideaMap.get(e.id);
       if (!idea) continue;
       const star = e.starred ? ' \u2605' : '';
-      const comments = e.comments.length > 0 ? ` (${e.comments.length} note${e.comments.length > 1 ? 's' : ''})` : '';
-      lines.push(`${i + 1}. ${idea.label}${star}${comments}`);
+      const noteTag = e.note ? ' (note)' : '';
+      lines.push(`${i + 1}. ${idea.label}${star}${noteTag}`);
     }
 
     lines.push('');
@@ -167,6 +185,7 @@ export class VoyageLog {
         this._data.visited = parsed.visited || {};
         this._data.starred = parsed.starred || {};
         this._data.comments = parsed.comments || {};
+        this._data.notes = parsed.notes || {};
       }
     } catch (_) {
       // Start fresh if corrupt
@@ -254,7 +273,7 @@ export class VoyageLog {
     if (this._activeTab === 'starred') {
       filtered = allEntries.filter(e => e.starred);
     } else if (this._activeTab === 'commented') {
-      filtered = allEntries.filter(e => e.comments.length > 0);
+      filtered = allEntries.filter(e => e.note);
     } else {
       filtered = allEntries;
     }
@@ -269,7 +288,7 @@ export class VoyageLog {
       <div class="voyage-tabs">
         <button class="${tabClass('all')}" data-tab="all">All (${allEntries.length}/${this._allIdeas.length})</button>
         <button class="${tabClass('starred')}" data-tab="starred">Starred (${allEntries.filter(e => e.starred).length})</button>
-        <button class="${tabClass('commented')}" data-tab="commented">Notes (${allEntries.filter(e => e.comments.length > 0).length})</button>
+        <button class="${tabClass('commented')}" data-tab="commented">Notes (${allEntries.filter(e => e.note).length})</button>
       </div>
       <div class="voyage-entries">
     `;
@@ -281,8 +300,14 @@ export class VoyageLog {
         const idea = ideaMap.get(entry.id);
         if (!idea) continue;
         const star = entry.starred ? '\u2605' : '';
-        const commentCount = entry.comments.length;
         const timeAgo = this._timeAgo(entry.visited.lastVisited);
+
+        // Show note preview on Notes tab, else show label
+        let notePreviewHtml = '';
+        if (this._activeTab === 'commented' && entry.note) {
+          const preview = entry.note.length > 80 ? entry.note.slice(0, 80) + '\u2026' : entry.note;
+          notePreviewHtml = `<div class="voyage-entry-note-preview">${this._escapeHtml(preview)}</div>`;
+        }
 
         html += `<button class="voyage-entry" data-idea-id="${entry.id}">
           <div class="voyage-entry-top">
@@ -290,9 +315,10 @@ export class VoyageLog {
             <span class="voyage-entry-label">${idea.label}</span>
             ${star ? `<span class="voyage-entry-star">${star}</span>` : ''}
           </div>
+          ${notePreviewHtml}
           <div class="voyage-entry-meta">
             <span>Visited ${entry.visited.count}x</span>
-            ${commentCount > 0 ? `<span>${commentCount} note${commentCount > 1 ? 's' : ''}</span>` : ''}
+            ${entry.note ? '<span>has note</span>' : ''}
             <span>${timeAgo}</span>
           </div>
         </button>`;
@@ -358,6 +384,10 @@ export class VoyageLog {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  _escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   _kindIcon(kind) {

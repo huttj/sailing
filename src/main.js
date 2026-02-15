@@ -23,6 +23,7 @@ const settings = {
   farThreshold: 600,    // distance beyond which you're fully zoomed out
   closeThreshold: 40,   // distance within which you're fully zoomed in
   diveZoom: 2.0,        // zoom level when diving
+  autodive: false,      // auto-dive on contact with a dot
 };
 
 function initSettings() {
@@ -49,6 +50,62 @@ function initSettings() {
   ];
 
   if (!content) return;
+
+  // Autodive checkbox
+  {
+    const row = document.createElement('div');
+    row.className = 'settings-row';
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '8px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'autodive-checkbox';
+    checkbox.checked = settings.autodive;
+    checkbox.style.accentColor = 'var(--accent)';
+
+    const labelEl = document.createElement('label');
+    labelEl.textContent = 'Autodive on contact';
+    labelEl.htmlFor = 'autodive-checkbox';
+    labelEl.style.cursor = 'pointer';
+
+    checkbox.addEventListener('change', () => {
+      settings.autodive = checkbox.checked;
+    });
+
+    row.appendChild(checkbox);
+    row.appendChild(labelEl);
+    content.appendChild(row);
+  }
+
+  // Show visited nodes checkbox
+  {
+    const row = document.createElement('div');
+    row.className = 'settings-row';
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '8px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'show-visited-checkbox';
+    checkbox.checked = true;
+    checkbox.style.accentColor = 'var(--accent)';
+
+    const labelEl = document.createElement('label');
+    labelEl.textContent = 'Show visited nodes';
+    labelEl.htmlFor = 'show-visited-checkbox';
+    labelEl.style.cursor = 'pointer';
+
+    checkbox.addEventListener('change', () => {
+      settings._hideVisited = !checkbox.checked;
+    });
+
+    row.appendChild(checkbox);
+    row.appendChild(labelEl);
+    content.appendChild(row);
+  }
 
   for (const s of sliders) {
     const row = document.createElement('div');
@@ -101,13 +158,13 @@ async function main() {
     themeToggle.textContent = theme.isLight ? 'Dark Mode' : 'Light Mode';
   }
 
-  // Ocean background — screen-space, not affected by camera
-  const ocean = new OceanRenderer(app.screen.width, app.screen.height, theme);
-  app.stage.addChild(ocean.container);
-
   // World container — everything that moves with the camera
   const worldContainer = new Container();
   app.stage.addChild(worldContainer);
+
+  // Ocean background — in world-space, at bottom of z-order
+  const ocean = new OceanRenderer(theme);
+  worldContainer.addChild(ocean.container);
 
   // Camera
   const camera = new Camera(app.screen.width, app.screen.height);
@@ -156,7 +213,7 @@ async function main() {
     // Island labels — added BEFORE dots in z-order
     // We insert the label container behind the dot layer
     islandLabels = new IslandLabels(worldContainer, topics, pointCloud.topicIndexMap);
-    worldContainer.setChildIndex(islandLabels.container, 0);
+    worldContainer.setChildIndex(islandLabels.container, 1);
 
     // Ship graphics on top of dots
     worldContainer.addChild(shipGfx);
@@ -235,6 +292,7 @@ async function main() {
       const post = posts[idea.post_id];
       if (post && diveMode) {
         diveMode.enter(idea);
+        controls.resetArrowUndive();
         const siblings = ideas.filter(i => i.post_id === idea.post_id);
         sidebar.show(idea, post, siblings);
       }
@@ -272,7 +330,6 @@ async function main() {
   // Handle resize
   window.addEventListener('resize', () => {
     camera.resize(app.screen.width, app.screen.height);
-    ocean.resize(app.screen.width, app.screen.height);
   });
 
   // Escape key exits dive
@@ -304,9 +361,29 @@ async function main() {
         const post = posts[nearest.post_id];
         if (post) {
           diveMode.enter(nearest);
+          controls.resetArrowUndive();
           const siblings = ideas.filter(i => i.post_id === nearest.post_id);
           sidebar.show(nearest, post, siblings);
         }
+      }
+    }
+
+    // Arrow-key hold undive (1.5s hold, requires fresh press)
+    if (diveMode && diveMode.active && controls.consumeArrowUndive(1500)) {
+      diveMode.exit();
+      if (sidebar) sidebar.hide();
+    }
+
+    // Autodive on contact
+    if (settings.autodive && diveMode && !diveMode.active &&
+        lastNearby.length > 0 && lastNearby[0].distance < DIVE_THRESHOLD) {
+      const nearest = lastNearby[0].idea;
+      const post = posts[nearest.post_id];
+      if (post) {
+        diveMode.enter(nearest);
+        controls.resetArrowUndive();
+        const siblings = ideas.filter(i => i.post_id === nearest.post_id);
+        sidebar.show(nearest, post, siblings);
       }
     }
 
@@ -323,6 +400,13 @@ async function main() {
     }
 
     ship.update(dt);
+
+    // Clamp ship to world bounds
+    const WORLD_BOUND = 6500;
+    if (ship.x < -WORLD_BOUND) { ship.x = -WORLD_BOUND; ship.vx = 0; }
+    if (ship.x > WORLD_BOUND) { ship.x = WORLD_BOUND; ship.vx = 0; }
+    if (ship.y < -WORLD_BOUND) { ship.y = -WORLD_BOUND; ship.vy = 0; }
+    if (ship.y > WORLD_BOUND) { ship.y = WORLD_BOUND; ship.vy = 0; }
 
     // Auto-zoom: proximity-driven, but movement-aware.
     // Moving → bias toward zoomed out. Slowing/stopped → settle to proximity zoom.
@@ -377,8 +461,14 @@ async function main() {
     shipGfx.x = ship.x;
     shipGfx.y = ship.y;
 
+    // Compute actual visible world-space viewport accounting for sidebar offset
+    const vpLeft = camera.x - centerX / zoom;
+    const vpRight = camera.x + (camera.screenWidth - centerX) / zoom;
+    const vpTop = camera.y - camera.screenHeight / (2 * zoom);
+    const vpBottom = camera.y + camera.screenHeight / (2 * zoom);
+
     // Update ocean background
-    ocean.update(elapsed, camera.x, camera.y);
+    ocean.update(elapsed, { left: vpLeft, right: vpRight, top: vpTop, bottom: vpBottom }, zoom);
 
     // Update island labels
     if (islandLabels) {
@@ -392,6 +482,7 @@ async function main() {
         lastNearby = nearby;
       }
 
+      pointCloud.hideVisited = !!settings._hideVisited;
       pointCloud.update(ship.x, ship.y, camera);
 
       // Check proximity switch in dive mode

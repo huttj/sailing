@@ -54,7 +54,19 @@ export class Sidebar {
     this.nodeCardEl = document.getElementById('sidebar-node-card');
     this.bodyEl = document.getElementById('sidebar-body');
 
+    this._siblingIdeas = [];
     this._onClose = null;
+
+    // Delegated click handler for highlighted marks
+    if (this.bodyEl) {
+      this.bodyEl.addEventListener('click', (e) => {
+        const mark = e.target.closest('mark[data-idea-id]');
+        if (mark) {
+          const target = this._allIdeas.find(i => i.id === mark.dataset.ideaId);
+          if (target && this._navigateCallback) this._navigateCallback(target);
+        }
+      });
+    }
 
     if (this.closeBtn) {
       this.closeBtn.addEventListener('click', () => {
@@ -121,11 +133,12 @@ export class Sidebar {
     this._renderNodeCard(idea, siblingIdeas);
 
     // Article body
+    this._siblingIdeas = siblingIdeas || [];
     if (this.bodyEl && post) {
       this.bodyEl.innerHTML = post.html || '';
       this.bodyEl.scrollTop = 0;
       requestAnimationFrame(() => {
-        this._highlightQuote(idea.quote, 'instant');
+        this._highlightAllQuotes(this._siblingIdeas, idea.id, 'instant');
       });
     }
 
@@ -146,11 +159,22 @@ export class Sidebar {
     const siblings = this._allIdeas.filter(i => i.post_id === idea.post_id);
     this._renderNodeCard(idea, siblings);
 
-    // Update article highlight
-    this._clearHighlights();
-    requestAnimationFrame(() => {
-      this._highlightQuote(idea.quote, 'smooth');
-    });
+    // Toggle highlight classes on existing marks
+    if (this.bodyEl) {
+      const marks = this.bodyEl.querySelectorAll('mark[data-idea-id]');
+      let scrollTarget = null;
+      for (const mark of marks) {
+        if (mark.dataset.ideaId === idea.id) {
+          mark.className = 'current-quote';
+          if (!scrollTarget) scrollTarget = mark;
+        } else {
+          mark.className = 'sibling-quote';
+        }
+      }
+      if (scrollTarget) {
+        setTimeout(() => scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+      }
+    }
   }
 
   hide() {
@@ -265,22 +289,32 @@ export class Sidebar {
       voyageCommentsHtml = commentsList;
     }
 
-    const hasMore = connectionsHtml || chipsHtml;
+    // Note scratch pad
+    const currentNote = this._voyageLog ? this._voyageLog.getNote(idea.id) : '';
+    const noteHtml = `
+      <div class="node-note">
+        <div class="node-note-label">Note</div>
+        <textarea class="node-note-textarea" placeholder="Write a note...">${this._escapeHtml(currentNote)}</textarea>
+      </div>
+    `;
+
+    const hasNote = this._voyageLog && this._voyageLog.hasNote(idea.id);
+    const noteIndicator = hasNote ? ' <span class="node-more-note-indicator">(note)</span>' : '';
     const hiddenClass = this._moreExpanded ? '' : ' node-more-hidden';
     const openClass = this._moreExpanded ? ' node-more-toggle-open' : '';
-    const moreSection = hasMore ? `
-      <button class="node-more-toggle${openClass}">Connections &amp; related</button>
+    const moreSection = `
+      <button class="node-more-toggle${openClass}">Connections &amp; related${noteIndicator}</button>
       <div class="node-more-content${hiddenClass}">
+        ${noteHtml}
         ${connectionsHtml}
         ${chipsHtml}
       </div>
-    ` : '';
+    `;
 
     this.nodeCardEl.innerHTML = `
       <div class="node-kind">${iconSpan(idea.kind, 'kind-icon')} ${kindLabel}</div>
       <div class="node-label">${idea.label}</div>
       <div class="node-synthesis">${idea.synthesis || ''}</div>
-      <blockquote class="node-quote">${idea.quote}</blockquote>
       ${voyageCommentsHtml}
       ${moreSection}
     `;
@@ -338,6 +372,29 @@ export class Sidebar {
       });
     }
 
+    // Wire note textarea auto-save
+    const noteTextarea = this.nodeCardEl.querySelector('.node-note-textarea');
+    if (noteTextarea && this._voyageLog) {
+      let saveTimeout = null;
+      noteTextarea.addEventListener('input', () => {
+        // Auto-expand
+        noteTextarea.style.height = 'auto';
+        noteTextarea.style.height = noteTextarea.scrollHeight + 'px';
+        // Debounced save
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          this._voyageLog.setNote(idea.id, noteTextarea.value);
+        }, 400);
+      });
+      noteTextarea.addEventListener('keydown', (e) => e.stopPropagation());
+      noteTextarea.addEventListener('keyup', (e) => e.stopPropagation());
+      // Set initial height
+      requestAnimationFrame(() => {
+        noteTextarea.style.height = 'auto';
+        noteTextarea.style.height = noteTextarea.scrollHeight + 'px';
+      });
+    }
+
     // Wire voyage comment add
     const commentAdd = this.nodeCardEl.querySelector('.voyage-comment-add');
     const commentArea = this.nodeCardEl.querySelector('.voyage-comment-textarea');
@@ -379,7 +436,7 @@ export class Sidebar {
 
   _clearHighlights() {
     if (!this.bodyEl) return;
-    const marks = this.bodyEl.querySelectorAll('mark.current-quote');
+    const marks = this.bodyEl.querySelectorAll('mark.current-quote, mark.sibling-quote');
     for (const mark of marks) {
       const parent = mark.parentNode;
       parent.replaceChild(document.createTextNode(mark.textContent), mark);
@@ -399,26 +456,20 @@ export class Sidebar {
       .trim();
   }
 
-  _highlightQuote(quote, scrollBehavior = 'smooth') {
-    if (!quote || !this.bodyEl) return;
-
-    const walker = document.createTreeWalker(
-      this.bodyEl, NodeFilter.SHOW_TEXT, null,
-    );
-
-    const textNodes = [];
-    let fullText = '';
-    let node;
-    while ((node = walker.nextNode())) {
-      textNodes.push({ node, start: fullText.length });
-      fullText += node.textContent;
-    }
+  /**
+   * Find a quote's {start, end} in the flat text string.
+   * Tries: exact → normalized → first-50-words → keyword regex.
+   */
+  _findQuoteRange(quote, fullText) {
+    if (!quote) return null;
 
     let idx = -1;
     let matchLen = quote.length;
 
+    // Exact case-insensitive
     idx = fullText.toLowerCase().indexOf(quote.toLowerCase());
 
+    // Normalized match
     if (idx === -1) {
       const normFull = this._normalizeForSearch(fullText);
       const normQuote = this._normalizeForSearch(quote);
@@ -429,6 +480,7 @@ export class Sidebar {
       }
     }
 
+    // First 50 chars fallback
     if (idx === -1 && quote.length > 50) {
       const normFull = this._normalizeForSearch(fullText);
       const normShort = this._normalizeForSearch(quote.slice(0, 50));
@@ -439,6 +491,7 @@ export class Sidebar {
       }
     }
 
+    // Keyword regex fallback
     if (idx === -1) {
       const words = quote.toLowerCase().split(/\s+/).filter(w => w.length > 3);
       if (words.length >= 3) {
@@ -447,39 +500,97 @@ export class Sidebar {
           const re = new RegExp(escaped.join('.*?'), 'i');
           const m = fullText.match(re);
           if (m) { idx = m.index; matchLen = m[0].length; }
-        } catch (_) {}
+        } catch (_) { /* ignore */ }
       }
     }
 
-    if (idx === -1) return;
+    if (idx === -1) return null;
+    return { start: idx, end: idx + matchLen };
+  }
 
-    const quoteEnd = idx + matchLen;
-    let scrolledToFirst = false;
+  /**
+   * Highlight all sibling quotes in the article body.
+   * Current idea gets `current-quote`, others get `sibling-quote`.
+   */
+  _highlightAllQuotes(siblingIdeas, currentIdeaId, scrollBehavior = 'smooth') {
+    if (!this.bodyEl) return;
 
-    for (let i = 0; i < textNodes.length; i++) {
-      const tn = textNodes[i];
-      const tnEnd = tn.start + tn.node.textContent.length;
-      if (tnEnd <= idx || tn.start >= quoteEnd) continue;
+    // Collect text nodes and build flat string
+    const walker = document.createTreeWalker(this.bodyEl, NodeFilter.SHOW_TEXT, null);
+    const textNodes = [];
+    let fullText = '';
+    let node;
+    while ((node = walker.nextNode())) {
+      textNodes.push({ node, start: fullText.length });
+      fullText += node.textContent;
+    }
 
-      const overlapStart = Math.max(0, idx - tn.start);
-      const overlapEnd = Math.min(tn.node.textContent.length, quoteEnd - tn.start);
-      const textContent = tn.node.textContent;
-
-      const frag = document.createDocumentFragment();
-      if (overlapStart > 0) frag.appendChild(document.createTextNode(textContent.slice(0, overlapStart)));
-
-      const mark = document.createElement('mark');
-      mark.className = 'current-quote';
-      mark.textContent = textContent.slice(overlapStart, overlapEnd);
-      frag.appendChild(mark);
-
-      if (overlapEnd < textContent.length) frag.appendChild(document.createTextNode(textContent.slice(overlapEnd)));
-      tn.node.parentNode.replaceChild(frag, tn.node);
-
-      if (!scrolledToFirst) {
-        scrolledToFirst = true;
-        setTimeout(() => mark.scrollIntoView({ behavior: scrollBehavior, block: 'center' }), 150);
+    // Find ranges for all siblings
+    const ranges = [];
+    for (const idea of siblingIdeas) {
+      const range = this._findQuoteRange(idea.quote, fullText);
+      if (range) {
+        ranges.push({ ...range, ideaId: idea.id, isCurrent: idea.id === currentIdeaId });
       }
+    }
+
+    // Remove overlapping ranges — prefer current idea
+    ranges.sort((a, b) => a.start - b.start);
+    const filtered = [];
+    for (const r of ranges) {
+      const overlaps = filtered.some(f =>
+        r.start < f.end && r.end > f.start
+      );
+      if (overlaps) {
+        // Only keep if this one is current and the overlapping one isn't
+        const overlapIdx = filtered.findIndex(f =>
+          r.start < f.end && r.end > f.start
+        );
+        if (r.isCurrent && overlapIdx !== -1 && !filtered[overlapIdx].isCurrent) {
+          filtered[overlapIdx] = r;
+        }
+        continue;
+      }
+      filtered.push(r);
+    }
+
+    // Sort last-to-first so DOM mutations don't invalidate earlier offsets
+    filtered.sort((a, b) => b.start - a.start);
+
+    let scrollTarget = null;
+
+    for (const range of filtered) {
+      const className = range.isCurrent ? 'current-quote' : 'sibling-quote';
+
+      for (let i = textNodes.length - 1; i >= 0; i--) {
+        const tn = textNodes[i];
+        const tnEnd = tn.start + tn.node.textContent.length;
+        if (tnEnd <= range.start || tn.start >= range.end) continue;
+
+        const overlapStart = Math.max(0, range.start - tn.start);
+        const overlapEnd = Math.min(tn.node.textContent.length, range.end - tn.start);
+        const textContent = tn.node.textContent;
+
+        const frag = document.createDocumentFragment();
+        if (overlapStart > 0) frag.appendChild(document.createTextNode(textContent.slice(0, overlapStart)));
+
+        const mark = document.createElement('mark');
+        mark.className = className;
+        mark.dataset.ideaId = range.ideaId;
+        mark.textContent = textContent.slice(overlapStart, overlapEnd);
+        frag.appendChild(mark);
+
+        if (overlapEnd < textContent.length) frag.appendChild(document.createTextNode(textContent.slice(overlapEnd)));
+        tn.node.parentNode.replaceChild(frag, tn.node);
+
+        if (range.isCurrent && !scrollTarget) {
+          scrollTarget = mark;
+        }
+      }
+    }
+
+    if (scrollTarget) {
+      setTimeout(() => scrollTarget.scrollIntoView({ behavior: scrollBehavior, block: 'center' }), 150);
     }
   }
 
